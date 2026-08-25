@@ -1,0 +1,9 @@
+{
+  "name": "xivstrat-platform",
+  "private": true,
+  "scripts": {
+    "dev:editor": "pnpm --dir apps/editor dev",
+    "dev:reviewer": "pnpm --dir apps/reviewer dev"
+  },
+  "packageManager": "pnpm@10.33.0"
+}
