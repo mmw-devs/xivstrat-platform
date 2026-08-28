@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "id": "submission-e2e-test",
+    "name": "GitHub Submission E2E Test",
+    "short_name": "E2E Test",
+    "type": "other",
+    "title": "GitHub Submission E2E Test",
+    "description": "Test-only content created by the Phase D2 GitHub App E2E.",
+    "banner": "banners/test/submission-e2e-test.webp",
+    "publish_time": "2026-08-29",
+    "status": "draft",
+    "video": "",
+    "team": "XivStrat Test"
+  },
+  "references": [],
+  "macros": [],
+  "phases": [
+    {
+      "id": "p1",
+      "name": "Test Phase",
+      "mechanics": []
+    }
+  ]
+}
