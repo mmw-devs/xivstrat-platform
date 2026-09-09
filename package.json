@@ -2,6 +2,8 @@
   "name": "xivstrat-platform",
   "private": true,
   "scripts": {
+    "build:editor": "pnpm --dir apps/editor build",
+    "check:editor": "pnpm --dir apps/editor check",
     "dev:editor": "pnpm --dir apps/editor dev",
     "dev:reviewer": "pnpm --dir apps/reviewer dev"
   },

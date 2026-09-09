@@ -1,0 +1,239 @@
+---
+
+---
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XivStrat 攻略编辑器</title>
+<style is:global>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --card: #1e2330; --line: #2c3342;
+    --fg: #e8eaf0; --dim: #9aa3b5; --accent: #8b5cf6; --ok: #22c55e; --err: #ef4444;
+    --yellow: #facc15; --green: #4ade80; --cyan: #22d3ee; --pink: #f472b6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; line-height: 1.6; }
+  header { padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 20px; display: flex; align-items: baseline; gap: 12px; }
+  header .sub { font-size: 13px; color: var(--dim); font-weight: normal; }
+  nav.steps { display: flex; gap: 8px; padding: 10px 24px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  nav.steps button { background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-size: 14px; }
+  nav.steps button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 24px 80px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  h2.sec { font-size: 16px; margin: 8px 0 12px; color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  label { display: block; font-size: 13px; color: var(--dim); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; background: var(--card); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: flex-start; }
+  .row > * { flex: 1; }
+  button.btn { background: var(--card); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn.danger { color: #fda4af; border-color: #7f1d1d; }
+  button.btn.sm { padding: 4px 10px; font-size: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 10px 0; }
+  .card .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .card .head b { font-size: 14px; }
+  .hint { font-size: 12px; color: var(--dim); }
+  .required { color: var(--err); margin-left: 2px; }
+  .phase-tag { background: #312e81; color: #c7d2fe; border-radius: 6px; padding: 1px 8px; font-size: 12px; margin-right: 6px; }
+  .mech-box { border-left: 3px solid var(--accent); padding-left: 12px; margin: 8px 0; }
+  .block-row { background: var(--bg); border: 1px dashed var(--line); border-radius: 8px; padding: 10px; margin: 8px 0; }
+  .section-box { border-left-width: 4px; }
+  .section-box.section-mechanic { border-color: rgba(250,204,21,.7); }
+  .section-box.section-solution { border-color: rgba(74,222,128,.7); }
+  .section-box.section-note { border-color: rgba(96,165,250,.75); }
+  /* 预览 */
+  .prev { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--panel); }
+  .prev .p-title { font-weight: bold; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 14px 0 8px; color: #c7d2fe; }
+  .prev .sep { display: flex; align-items: center; gap: 10px; margin: 10px 0; color: var(--yellow); font-size: 13px; }
+  .prev .sep::before, .prev .sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .prev .preview-sub-mechanics { margin: 8px 0 0 16px; padding-left: 12px; border-left: 2px solid rgba(34,211,238,.45); }
+  .prev .preview-sub-mechanics > .preview-mechanic > .sep { color: var(--cyan); }
+  .prev .box { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 14px; }
+  .prev .box.mech { border-color: rgba(250,204,21,.45); }
+  .prev .box.sol { border-color: rgba(74,222,128,.45); }
+  .prev .box.note { border-color: rgba(34,211,238,.45); }
+  .prev .box .ptag { font-size: 12px; opacity: .7; margin-bottom: 4px; }
+  .prev .rowline { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--dim); padding: 3px 0; }
+  .prev .rowline .t { color: var(--cyan); font-family: Consolas, monospace; }
+  .prev .img-chip { display: inline-block; background: #134e4a; color: #99f6e4; border-radius: 6px; padding: 2px 8px; font-size: 12px; margin: 3px 4px 3px 0; }
+  /* 校验 */
+  .vlist { list-style: none; padding: 0; margin: 0; }
+  .vlist li { padding: 4px 10px; border-radius: 6px; margin: 3px 0; font-size: 13px; }
+  .vlist li.err { background: rgba(239,68,68,.12); color: #fca5a5; }
+  .ok-badge { display: inline-block; background: rgba(34,197,94,.15); color: var(--ok); border-radius: 8px; padding: 2px 10px; font-size: 13px; }
+  .err-badge { display: inline-block; background: rgba(239,68,68,.15); color: var(--err); border-radius: 8px; padding: 2px 10px; font-size: 13px; }
+  .files { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .files .f { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  textarea.code { font-family: Consolas, "Courier New", monospace; font-size: 12px; min-height: 120px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; }
+  summary { cursor: pointer; color: var(--dim); font-size: 13px; }
+  .help { background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.3); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--dim); margin-bottom: 12px; }
+  .img-row { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+  .img-row input { flex: 1; min-width: 120px; }
+  .empty-state { text-align: center; padding: 40px 16px; border: 1px dashed var(--line); border-radius: 12px; }
+  .empty-state .es-title { font-size: 18px; margin-bottom: 8px; }
+  .empty-state .hint { margin-bottom: 14px; }
+  .empty-state .btn { font-size: 14px; padding: 9px 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>XivStrat 攻略编辑器 <span class="sub">可视化填写 · 实时预览 · 一键导出 · 无需编程</span></h1>
+</header>
+<nav class="steps">
+  <button data-step="1" class="active">① 基本信息</button>
+  <button data-step="2">② 参考与宏</button>
+  <button data-step="3">③ 阶段与机制</button>
+  <button data-step="4">④ 预览 · 校验 · 导出</button>
+</nav>
+<main>
+  <!-- ================= 步骤 1：基本信息 ================= -->
+  <section class="panel active" id="step1">
+    <div class="help">所有必填项用<span class="required">*</span>号表示。</div>
+    <div class="grid2">
+      <div><label>英文代号 id（如 enou，只能英文小写/数字/短横线）<span class="required">*</span></label><input id="inp-id" placeholder="enou" /></div>
+      <div><label>副本全名<span class="required">*</span></label><input id="inp-name" placeholder="恩欧歼殛战" /></div>
+      <div><label>简称<span class="required">*</span></label><input id="inp-short" placeholder="极恩欧" /></div>
+      <div><label>类型<span class="required">*</span></label>
+        <select id="inp-type"><option>极神</option><option>零式</option><option>绝本</option><option>其他</option></select>
+      </div>
+      <div><label>页面标题<span class="required">*</span></label><input id="inp-title" placeholder="恩欧歼殛战 攻略" /></div>
+      <div><label>描述（一句话）<span class="required">*</span></label><input id="inp-desc" placeholder="最终幻想14 恩欧歼殛战 超详解动态图文攻略" /></div>
+      <div><label>横幅图路径<span class="required">*</span></label><div class="img-row"><input id="inp-banner" placeholder="banners/07/enou.webp" /><input type="file" id="f-banner" accept="image/*" style="display:none" /><label for="f-banner" class="btn sm" style="cursor:pointer;flex:0 0 auto" title="选择本地图片">🖼 选图</label><button id="btn-upload-banner" class="btn sm">☁️ 上传</button><span class="hint" id="st-banner"></span></div></div>
+      <div><label>发布时间（datetime）<span class="required">*</span></label><div class="row" style="gap:6px"><input id="inp-date" placeholder="26/04/28 12:00" /><button id="btn-sync-time" class="btn sm" style="flex:0 0 auto" title="用当前本地时间填充">🕐 现在</button></div></div>
+      <div><label>状态<span class="required">*</span></label>
+        <select id="inp-status"><option>草稿</option><option>审核中</option><option>已完成</option></select>
+      </div>
+      <div><label>B站视频链接（可留空）</label><input id="inp-video" placeholder="https://www.bilibili.com/video/xxx" /></div>
+      <div><label>攻略组署名<span class="required">*</span></label><input id="inp-group" placeholder="MMW攻略组" /></div>
+    </div>
+    <div style="margin-top:14px"><button id="btn-step-1-next" class="btn primary">下一步：参考与宏 →</button></div>
+  </section>
+
+  <!-- ================= 步骤 2：参考与宏 ================= -->
+  <section class="panel" id="step2">
+    <h2 class="sec">参考资料（可选，每行一条：标题 | 链接）</h2>
+    <div id="refs"></div>
+    <button id="btn-add-ref" class="btn sm">＋ 添加参考资料</button>
+
+    <h2 class="sec" style="margin-top:24px">宏（可选，多行）</h2>
+    <div id="macros"></div>
+    <button id="btn-add-macro" class="btn sm">＋ 添加宏</button>
+
+    <div style="margin-top:14px"><button id="btn-step-2-back" class="btn">← 上一步</button> <button id="btn-step-2-next" class="btn primary">下一步：阶段与机制 →</button></div>
+  </section>
+
+  <!-- ================= 步骤 3：阶段与机制 ================= -->
+  <section class="panel" id="step3">
+    <div class="help">🏗️ 机制 = 一个攻略小节。每个机制要填<b>name</b>和<b>id</b>（编号是页内跳转锚点，本阶段内不能重复）。
+      每个机制用有序的 <b>sections</b> 组织内容：<b>mechanic</b>（黄框）· <b>solution</b>（绿框）· <b>note</b>（蓝框）。
+      每个区块内部可按顺序添加 <b>text</b>（正文）和 <b>image</b>（图片）。</div>
+    <div id="phases"></div>
+    <button id="btn-add-phase" class="btn sm">＋ 添加阶段（Phase）</button>
+    <div style="margin-top:14px"><button id="btn-step-3-back" class="btn">← 上一步</button> <button id="btn-step-3-next" class="btn primary">下一步：预览与导出 →</button></div>
+  </section>
+
+  <!-- ================= 步骤 4：预览 / 校验 / 导出 ================= -->
+  <section class="panel" id="step4">
+    <div class="tabs">
+      <button id="btn-download-template" class="btn primary">⬇ 下载 schema 数据（.json）</button>
+      <button id="btn-copy-all-files" class="btn">📋 复制全部网站文件到剪贴板</button>
+      <button id="btn-download-bundle" class="btn">⬇ 下载全部文件（打包 .txt）</button>
+      <button id="btn-load-demo" class="btn">🎲 载入示例</button>
+    </div>
+
+    <details id="cosSettingsBox">
+      <summary>☁️ 图片直传 COS 设置（可选，配置后可在编辑器里直接上传图片到腾讯云）</summary>
+      <div class="card">
+        <div class="grid2">
+          <div><label>SecretId</label><input id="cos-secret-id" placeholder="AKID..." autocomplete="off" /></div>
+          <div><label>SecretKey</label><input id="cos-secret-key" type="password" placeholder="..." autocomplete="off" /></div>
+          <div><label>存储桶 Bucket</label><input id="cos-bucket" placeholder="xivstrat-1250000000" /></div>
+          <div><label>地域 Region</label><input id="cos-region" placeholder="ap-guangzhou" /></div>
+        </div>
+        <div class="row" style="margin-top:10px;gap:8px">
+          <button id="btn-save-cos" class="btn sm primary">保存设置</button>
+          <button id="btn-test-cos" class="btn sm">测试连接</button>
+          <span class="hint" id="cos-status"></span>
+        </div>
+        <div class="hint" style="margin-top:8px">⚠️ 密钥只保存在你当前浏览器（localStorage）。建议使用<b>子账号最小权限密钥</b>（只授权本存储桶读写），不要用主账号密钥。不配置也能用：把图片链接直接填进内容块即可。</div>
+      </div>
+    </details>
+
+    <details id="imgLibBox">
+      <summary>🖼 图片图库（重复使用攻略图片或图标）</summary>
+      <div class="card">
+        <div class="row" style="gap:8px">
+          <input id="lib-name" placeholder="名称（如 糖糖慕斯怪图标）" style="flex:1" />
+          <input type="file" id="lib-file" accept="image/*" style="display:none" />
+          <label for="lib-file" class="btn sm" style="cursor:pointer;flex:0 0 auto" title="选择本地图片">🖼 选图</label>
+          <input id="lib-path" placeholder="COS 路径（选图后自动生成，可改）" style="flex:2" />
+          <button id="btn-lib-add" class="btn sm primary">＋ 加入图库</button>
+        </div>
+        <div class="hint" style="margin-top:6px">选图后路径自动生成；建议先「☁️ 上传」到 COS 再用。也可以只填"名称+路径"手动加入。</div>
+        <div id="lib-list" style="margin-top:8px"></div>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+          <button id="btn-lib-upload" class="btn sm">☁️ 上传刚选的图到 COS</button>
+          <button id="btn-lib-clear" class="btn sm danger">清空图库</button>
+          <span class="hint" id="lib-status"></span>
+        </div>
+      </div>
+    </details>
+
+    <details id="xivBox">
+      <summary>🎮 XIVAPI 游戏数据查询（FFXIV 解包素材：技能/状态/敌人名，图标可直接入图库）</summary>
+      <div class="card">
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <select id="xiv-sheet" style="flex:0 0 auto;width:auto">
+            <option value="Action">技能 Action</option>
+            <option value="Status">状态 Status</option>
+            <option value="BNpcName">敌人名 BNpcName</option>
+          </select>
+          <select id="xiv-lang" style="flex:0 0 auto;width:auto">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+          <input id="xiv-q" placeholder="输入关键词，如 灼热 或 Fire" style="flex:2;min-width:140px" />
+          <button id="btn-xiv-search" class="btn sm primary">搜索</button>
+          <input id="xiv-key" placeholder="API Key（可选，提高限额）" style="flex:1.5;min-width:120px" />
+          <button id="btn-xiv-save-key" class="btn sm">保存 Key</button>
+        </div>
+        <div class="hint" style="margin-top:6px">先点击你要填入的目标输入框，再点结果的「插入名字」→ 自动填入准确的游戏内名字；「图标→图库」把图标加入图片图库；「复制图标地址」复制直链。</div>
+        <div class="hint" style="margin-top:4px">数据与素材来自 XIVAPI（v2.xivapi.com），素材版权归 SQUARE ENIX；未配置 Key 也可用（限额较低）。</div>
+        <div id="xiv-status" class="hint" style="margin-top:6px"></div>
+        <div id="xiv-results" style="margin-top:8px"></div>
+      </div>
+    </details>
+
+    <h2 class="sec">校验结果 <span id="vbadge"></span></h2>
+    <ul class="vlist" id="vlist"></ul>
+
+    <h2 class="sec" style="margin-top:18px">实时预览（网站效果模拟）</h2>
+    <div class="prev" id="preview"></div>
+
+    <h2 class="sec" style="margin-top:18px">生成的文件（点击逐个下载）</h2>
+    <div class="files" id="filelist"></div>
+
+    <h2 class="sec" style="margin-top:18px">导入 schema 数据（JSON）</h2>
+    <textarea class="code" id="importArea" placeholder="在这里粘贴符合 YAML schema v0.1 结构的 JSON，然后点下面的按钮"></textarea>
+    <div style="margin-top:8px"><button id="btn-import-template" class="btn primary">导入 schema 数据</button></div>
+  </section>
+</main>
+
+<script>
+  import { initEditor } from '../../scripts/editor';
+
+  initEditor();
+</script>
+</body>
+</html>
