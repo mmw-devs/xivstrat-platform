@@ -141,15 +141,19 @@ export async function verifyInstallationRepositoryAccess(
   let octokit: InstallationOctokit
   try {
     octokit = await app.getInstallationOctokit(config.installationId)
-    const response = await octokit.request('GET /installation/repositories', { per_page: 100 })
     const repositoryFullName = `${config.owner}/${config.repo}`
-    if (!response.data.repositories.some((repository) => repository.full_name === repositoryFullName)) {
-      throw new GitHubIntegrationError(
-        'GITHUB_REPOSITORY_ACCESS_ERROR',
-        `Installation repository list does not contain ${repositoryFullName}`,
-      )
+    const perPage = 100
+    for (let page = 1; ; page += 1) {
+      const response = await octokit.request('GET /installation/repositories', { per_page: perPage, page })
+      if (response.data.repositories.some((repository) => repository.full_name === repositoryFullName)) {
+        return { octokit, repositoryFullName }
+      }
+      if (response.data.repositories.length < perPage) break
     }
-    return { octokit, repositoryFullName }
+    throw new GitHubIntegrationError(
+      'GITHUB_REPOSITORY_ACCESS_ERROR',
+      `Installation repository list does not contain ${repositoryFullName}`,
+    )
   } catch (error) {
     if (error instanceof GitHubIntegrationError) throw error
     throw new GitHubIntegrationError(

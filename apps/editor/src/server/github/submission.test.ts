@@ -56,20 +56,29 @@ test('rejects traversal, slash, backslash, empty, and unsafe target paths', () =
   expectCode(() => assertSafeTargetPath('other/submission-test.json'), 'UNSAFE_TARGET_PATH')
 })
 
-async function runSubmission(existingSha?: string, failPullRequest = false) {
+interface RunSubmissionOptions {
+  existingSha?: string
+  failAt?: 'branch' | 'file' | 'pr'
+}
+
+async function runSubmission(options: RunSubmissionOptions = {}) {
   const calls: Array<{ route: string; parameters: Record<string, unknown> }> = []
   const request = async (route: string, parameters: Record<string, unknown>) => {
     calls.push({ route, parameters })
-    if (route.startsWith('POST /repos/{owner}/{repo}/git/refs')) return { data: { ref: parameters.ref } }
+    if (route.startsWith('POST /repos/{owner}/{repo}/git/refs')) {
+      if (options.failAt === 'branch') throw new Error('socket closed')
+      return { data: { ref: parameters.ref } }
+    }
     if (route.startsWith('GET /repos/{owner}/{repo}/contents/{path}')) {
-      if (!existingSha) throw Object.assign(new Error('Not Found'), { status: 404 })
-      return { data: { type: 'file', sha: existingSha } }
+      if (!options.existingSha) throw Object.assign(new Error('Not Found'), { status: 404 })
+      return { data: { type: 'file', sha: options.existingSha } }
     }
     if (route.startsWith('PUT /repos/{owner}/{repo}/contents/{path}')) {
+      if (options.failAt === 'file') throw new Error('connection reset')
       return { data: { commit: { sha: 'commit-sha' } } }
     }
     if (route.startsWith('POST /repos/{owner}/{repo}/pulls')) {
-      if (failPullRequest) throw Object.assign(new Error('PR failed'), { status: 500 })
+      if (options.failAt === 'pr') throw new Error('other side closed')
       return { data: { number: 42, html_url: 'https://github.com/mmw-devs/xivstrat-platform/pull/42' } }
     }
     throw new Error(`Unexpected route: ${route}`)
@@ -99,24 +108,77 @@ test('missing file creates a new file with canonical JSON on a fresh content bra
   assert.equal(pull.parameters.head, result.branch)
   assert.equal(result.commitSha, 'commit-sha')
   assert.equal(result.headSha, 'commit-sha')
+  assert.deepEqual(result.outcomes, {
+    branchCreation: 'confirmed',
+    fileWrite: 'confirmed',
+    prCreation: 'confirmed',
+  })
 })
 
 test('existing file updates using its SHA and canonical JSON', async () => {
-  const { calls } = await runSubmission('existing-blob-sha')
+  const { calls } = await runSubmission({ existingSha: 'existing-blob-sha' })
   const write = calls.find((call) => call.route.startsWith('PUT /repos/{owner}/{repo}/contents/{path}'))!
   assert.equal(write.parameters.sha, 'existing-blob-sha')
   assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson(structure))
 })
 
-test('PR failure does not return success and reports orphan branch context', async () => {
-  const submit = runSubmission(undefined, true)
+test('PUT network failure reports an unknown file outcome and does not attempt a PR', async () => {
+  await assert.rejects(runSubmission({ failAt: 'file' }), (error) => {
+    assert.ok(error instanceof GitHubIntegrationError)
+    assert.equal(error.code, 'FILE_CREATE_ERROR')
+    assert.deepEqual(error.submissionContext?.outcomes, {
+      branchCreation: 'confirmed',
+      fileWrite: 'unknown',
+      prCreation: 'not-performed',
+    })
+    return true
+  })
+})
+
+test('PR network failure reports an unknown PR outcome and does not return success', async () => {
+  const submit = runSubmission({ failAt: 'pr' })
   await assert.rejects(submit, (error) => {
     assert.ok(error instanceof GitHubIntegrationError)
     assert.equal(error.code, 'PR_CREATE_ERROR')
-    assert.equal(error.submissionContext?.branchCreated, true)
-    assert.equal(error.submissionContext?.fileWritten, true)
+    assert.deepEqual(error.submissionContext?.outcomes, {
+      branchCreation: 'confirmed',
+      fileWrite: 'confirmed',
+      prCreation: 'unknown',
+    })
     assert.equal(error.submissionContext?.orphanBranchPossible, true)
     assert.match(error.submissionContext?.branch ?? '', /^content\//)
+    assert.match(error.message, /PR creation outcome is unknown/)
+    return true
+  })
+})
+
+test('branch network failure is unknown and later operations are not performed', async () => {
+  await assert.rejects(runSubmission({ failAt: 'branch' }), (error) => {
+    assert.ok(error instanceof GitHubIntegrationError)
+    assert.equal(error.code, 'BRANCH_CREATE_ERROR')
+    assert.deepEqual(error.submissionContext?.outcomes, {
+      branchCreation: 'unknown',
+      fileWrite: 'not-performed',
+      prCreation: 'not-performed',
+    })
+    return true
+  })
+})
+
+test('input validation failure marks every remote operation as not performed', async () => {
+  const invalid = structuredClone(structure)
+  invalid.metadata.id = '../escape'
+  const submit = createSubmissionService(async () => {
+    throw new Error('runtime must not be created for invalid input')
+  })
+  await assert.rejects(submit(invalid), (error) => {
+    assert.ok(error instanceof GitHubIntegrationError)
+    assert.equal(error.code, 'INVALID_STRATEGY_ID')
+    assert.deepEqual(error.submissionContext?.outcomes, {
+      branchCreation: 'not-performed',
+      fileWrite: 'not-performed',
+      prCreation: 'not-performed',
+    })
     return true
   })
 })

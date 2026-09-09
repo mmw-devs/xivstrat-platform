@@ -49,8 +49,9 @@ if (validationErrors.length > 0) {
       console.error(`[${error.code}] ${error.message}`)
       if (error.submissionContext?.branch) console.error(`Branch: ${error.submissionContext.branch}`)
       if (error.submissionContext) {
-        console.error(`Branch created: ${error.submissionContext.branchCreated}`)
-        console.error(`File written: ${error.submissionContext.fileWritten}`)
+        console.error(`Branch creation: ${error.submissionContext.outcomes.branchCreation}`)
+        console.error(`File write: ${error.submissionContext.outcomes.fileWrite}`)
+        console.error(`PR creation: ${error.submissionContext.outcomes.prCreation}`)
         console.error(`Orphan branch possible: ${error.submissionContext.orphanBranchPossible}`)
       }
       if (error.diagnostic) {

@@ -7,7 +7,7 @@
     "check": "astro check",
     "build": "astro check && astro build",
     "github:app:test": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/test-github-app.ts",
-    "github:submission:test": "node --experimental-strip-types --test src/server/github/env.test.ts src/server/github/submission.test.ts",
+    "github:submission:test": "node --experimental-strip-types --test src/server/github/app.test.ts src/server/github/env.test.ts src/server/github/submission.test.ts",
     "github:submission:e2e": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/test-create-submission.ts",
     "preview": "astro preview"
   },

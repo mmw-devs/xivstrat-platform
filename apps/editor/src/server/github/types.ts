@@ -32,10 +32,17 @@ export interface SafeGitHubApiDiagnostic {
   requestId?: string
 }
 
+export type OperationOutcome = 'confirmed' | 'not-performed' | 'unknown'
+
+export interface SubmissionOperationOutcomes {
+  branchCreation: OperationOutcome
+  fileWrite: OperationOutcome
+  prCreation: OperationOutcome
+}
+
 export interface SubmissionFailureContext {
   branch?: string
-  branchCreated: boolean
-  fileWritten: boolean
+  outcomes: SubmissionOperationOutcomes
   orphanBranchPossible: boolean
 }
 
