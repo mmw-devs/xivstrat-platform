@@ -1,3 +1,3 @@
 import { defineConfig } from 'astro/config'
 
-export default defineConfig({})
+export default defineConfig({ vite: { server: { proxy: { '/api/proofread': 'http://127.0.0.1:4322' } } } })

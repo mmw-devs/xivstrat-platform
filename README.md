@@ -1,13 +1,21 @@
 # XivStrat Platform
 
-XivStrat 的编辑平台与审核平台 monorepo 骨架。
+攻略编辑平台与审核平台 monorepo。当前编辑器支持结构化攻略、受限富文本正文和独立的全文语言校对步骤。
 
-## Monorepo 结构
+## 本地启动
 
-- apps/editor：攻略内容编辑平台
-- apps/reviewer：攻略内容审核平台
-- packages/content-schema：编辑与审核共用的内容模型和校验规则
-- packages/ui：跨平台共享 UI
-- packages/config：共享工程配置
+```powershell
+pnpm.cmd install --frozen-lockfile
+pnpm.cmd dev:editor --host 127.0.0.1
+```
 
-当前仓库只包含目录骨架，不包含现有工作目录中的项目代码或素材。
+打开 http://127.0.0.1:4321/editor/。正文编辑无需模型服务；AI 校对需要另行配置服务端。
+
+## 目录
+
+- `apps/editor`：Astro 编辑器，正文工具栏使用 Tiptap 官方 UI 组件。
+- `apps/reviewer`：审核平台目录。
+- `packages/content-schema`：共享 TypeScript 数据契约、运行时校验、迁移和富文本渲染。
+- `packages/ui`、`packages/config`：共享 UI 与配置目录。
+
+[富文本与校对说明](docs/richtext-proofread.md)包含模型配置、数据兼容和验证边界；[DESIGN.md](DESIGN.md)记录界面约定。

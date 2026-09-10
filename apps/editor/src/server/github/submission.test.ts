@@ -12,6 +12,7 @@ import {
 import { GitHubIntegrationError } from './types.ts'
 
 const structure: StrategyStructure = {
+  schemaVersion: 2,
   metadata: {
     id: 'submission-test',
     name: 'Submission Test',

@@ -1,3 +1,4 @@
+import { parseRichText, plainTextDocument, richTextLines } from './richtext.ts'
 import {
   CONTENT_TYPES,
   type ContentBlock,
@@ -58,7 +59,7 @@ function asString(value: unknown): string {
 }
 
 function asTextArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.map(asString).filter(Boolean) : []
+  return Array.isArray(value) ? value.map(asString) : []
 }
 
 function isContentType(value: string): value is (typeof CONTENT_TYPES)[number] {
@@ -86,7 +87,9 @@ function normalizeContent(value: unknown): ContentBlock | null {
   if (type === 'image') {
     return { type, file: asString(value.file), caption: asString(value.caption) }
   }
-  return { type, value: asTextArray(value.value) }
+  if ('doc' in value && (typeof value.id !== 'string' || !value.id || value.id.length > 100)) throw new Error('新版正文缺少有效 id')
+  if ('doc' in value && 'value' in value) throw new Error('正文不能同时包含 doc 和 value')
+  return { type, id: typeof value.id === 'string' && value.id ? value.id : crypto.randomUUID(), doc: 'doc' in value ? parseRichText(value.doc) : plainTextDocument(asTextArray(value.value)) }
 }
 
 function normalizeSection(value: unknown): StrategySection | null {
@@ -124,8 +127,25 @@ function normalizePhase(value: unknown): StrategyPhase {
 
 export function normalizeStructure(raw: unknown): StrategyStructure {
   const source = isRecord(raw) ? raw : {}
+  if (source.schemaVersion !== undefined && source.schemaVersion !== 1 && source.schemaVersion !== 2) throw new Error('不支持的 schemaVersion')
+  const seenBlockIds = new Set<string>()
+  const inspect = (value: unknown): void => {
+    if (Array.isArray(value)) { value.forEach(inspect); return }
+    if (!isRecord(value)) return
+    if (value.type === 'text') {
+      if (source.schemaVersion === 2 && !('doc' in value)) throw new Error('v2 正文必须使用 doc')
+      if (typeof value.id === 'string') {
+        if (seenBlockIds.has(value.id)) throw new Error('正文 id 重复')
+        seenBlockIds.add(value.id)
+      }
+      return
+    }
+    Object.values(value).forEach(inspect)
+  }
+  inspect(source.phases)
   const metadata = isRecord(source.metadata) ? source.metadata : {}
   return {
+    schemaVersion: 2,
     metadata: {
       id: asString(metadata.id),
       name: asString(metadata.name),
@@ -175,7 +195,7 @@ function validateContent(content: ContentBlock[], parentPath: string, errors: st
       if (!item.caption) errors.push(`${breadcrumb(path, '图片说明')}：未填写`)
       return
     }
-    if (!item.value.length) errors.push(`${breadcrumb(path, '文本内容')}：至少填写一行文字`)
+    if (!richTextLines(item.doc).some(line => line.trim())) errors.push(`${breadcrumb(path, '文本内容')}：至少填写一行文字`)
   })
 }
 

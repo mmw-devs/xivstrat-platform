@@ -2,7 +2,7 @@
 
 ---
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -83,6 +83,21 @@
   .empty-state .es-title { font-size: 18px; margin-bottom: 8px; }
   .empty-state .hint { margin-bottom: 14px; }
   .empty-state .btn { font-size: 14px; padding: 9px 18px; }
+  .body-workspace { display:grid; grid-template-columns:minmax(0, 1fr) 280px; gap:16px; align-items:start; }
+  #proofread { position:sticky; top:90px; max-height:80vh; overflow:auto; }
+  .richtext-toolbar, .proofread-controls { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+  .richtext-toolbar select { width:auto; padding:4px; }
+  .richtext-toolbar button[aria-pressed="true"] { background:var(--accent); }
+  button:disabled { opacity:.45; cursor:default; }
+  .richtext-body { min-height:110px; padding:10px; border:1px solid var(--line); border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:16px; }
+  .richtext-body:focus { outline:2px solid var(--accent); }
+  .richtext-body p { margin:0 0 6px; }
+  .proofread-suggestion { border-top:1px solid var(--line); padding:10px 0; overflow-wrap:anywhere; font-size:13px; }
+  .proofread-prose { font-size:16px; overflow-wrap:anywhere; }
+  .proofread-highlight { background:#facc15; color:#171a21; outline:2px solid #facc15; border-radius:2px; }
+  .proofread-body h3 { font-size:14px; color:var(--dim); font-weight:normal; }
+  .proofread-suggestion p { margin:4px 0; }
+  @media(max-width:900px) { .body-workspace { grid-template-columns:minmax(0,1fr); } #proofread { position:static; max-height:none; } .body-workspace .row { flex-wrap:wrap; } .body-workspace .row > * { min-width:0; } main { padding:12px; } }
 </style>
 </head>
 <body>
@@ -93,7 +108,8 @@
   <button data-step="1" class="active">① 基本信息</button>
   <button data-step="2">② 参考与宏</button>
   <button data-step="3">③ 阶段与机制</button>
-  <button data-step="4">④ 预览 · 校验 · 导出</button>
+  <button data-step="4">④ 全文校对</button>
+  <button data-step="5">⑤ 预览 · 校验 · 导出</button>
 </nav>
 <main>
   <!-- ================= 步骤 1：基本信息 ================= -->
@@ -139,13 +155,19 @@
       每个区块内部可按顺序添加 <b>text</b>（正文）和 <b>image</b>（图片）。</div>
     <div id="phases"></div>
     <button id="btn-add-phase" class="btn sm">＋ 添加阶段（Phase）</button>
-    <div style="margin-top:14px"><button id="btn-step-3-back" class="btn">← 上一步</button> <button id="btn-step-3-next" class="btn primary">下一步：预览与导出 →</button></div>
+    <div style="margin-top:14px"><button id="btn-step-3-back" class="btn">← 上一步</button> <button id="btn-step-3-next" class="btn primary">下一步：全文校对 →</button></div>
   </section>
 
   <!-- ================= 步骤 4：预览 / 校验 / 导出 ================= -->
   <section class="panel" id="step4">
+    <div class="help">通读全文并逐条判断校对建议。点击“定位原文”查看高亮，接受后同步更新正文；手动改写请返回第③步。此步骤可跳过。</div>
+    <div class="body-workspace"><div id="proofread-reading"></div><aside id="proofread" class="card"></aside></div>
+    <div class="proofread-controls"><button id="btn-step-4-back" class="btn">← 返回阶段与机制</button><button id="btn-step-4-next" class="btn primary">下一步：预览与导出 →</button></div>
+  </section>
+  <section class="panel" id="step5">
     <div class="tabs">
       <button id="btn-download-template" class="btn primary">⬇ 下载 schema 数据（.json）</button>
+      <button id="btn-download-legacy" class="btn">下载旧版纯文本 JSON</button>
       <button id="btn-copy-all-files" class="btn">📋 复制全部网站文件到剪贴板</button>
       <button id="btn-download-bundle" class="btn">⬇ 下载全部文件（打包 .txt）</button>
       <button id="btn-load-demo" class="btn">🎲 载入示例</button>
