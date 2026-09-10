@@ -12,7 +12,8 @@ export type StrategyStatus = (typeof STRATEGY_STATUSES)[number]
 
 export interface TextContentBlock {
   type: 'text'
-  value: string[]
+  id: string
+  doc: import('./richtext.ts').RichTextDocument
 }
 
 export interface ImageContentBlock {
@@ -67,6 +68,7 @@ export interface StrategyMacro {
 }
 
 export interface StrategyStructure {
+  schemaVersion: 2
   metadata: StrategyMetadata
   references: StrategyReference[]
   macros: StrategyMacro[]

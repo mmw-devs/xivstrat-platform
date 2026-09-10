@@ -1,4 +1,7 @@
-import { structureToJson, validateStructure } from '@xivstrat/content-schema'
+import { createBodyEditor, type BodyEditorHandle } from '../lib/richtext/editor'
+import { createProofreadPanel, type ProofreadPanel } from '../lib/proofread/panel'
+import { snapshotBlocks, snapshotLabel } from '../lib/proofread/contracts'
+import { structureToJson, validateStructure, normalizeStructure, plainTextDocument, renderRichText, richTextLines } from '@xivstrat/content-schema'
 import type {
   ContentBlock,
   ContentType,
@@ -96,6 +99,9 @@ const SECTION_TYPE_OPTIONS: readonly SectionOption[] = [
 const COS_SETTING_KEYS = ['cos-secret-id', 'cos-secret-key', 'cos-bucket', 'cos-region'] as const
 const HOME_IMAGES = { banner: 'banners/07/' } as const
 
+const bodyEditors = new Map<HTMLElement, BodyEditorHandle>()
+let proofreadPanel: ProofreadPanel | undefined
+let lastBodyEditor: BodyEditorHandle | undefined
 let initialized = false
 let latestGenerated: GeneratedSnapshot | null = null
 let libPendingFile: File | null = null
@@ -174,7 +180,24 @@ function selectedSectionType(select: HTMLSelectElement): SectionType {
   return SECTION_TYPE_OPTIONS.some(([value]) => value === type) ? type : 'mechanic'
 }
 
+function showProofreadReading(highlight?: { blockId: string; paragraph: number; from: number; to: number }): void {
+  const reading = byId<HTMLElement>('proofread-reading')
+  reading.replaceChildren()
+  for (const snapshot of snapshotBlocks(collect())) {
+    const block = [...bodyEditors.keys()].find(block => block.dataset.blockId === snapshot.blockId)
+    const handle = block && bodyEditors.get(block)
+    if (!handle) continue
+    const article = el('article', { class: 'card proofread-body', 'data-reading-block': snapshot.blockId }, el('h3', {}, snapshotLabel(snapshot.path)))
+    const body = el('div', { class: 'proofread-prose' })
+    body.innerHTML = renderRichText(handle.getDocument(), false, highlight?.blockId === snapshot.blockId ? highlight : undefined)
+    article.append(body)
+    reading.append(article)
+    if (highlight?.blockId === snapshot.blockId) article.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }
+  if (!reading.childElementCount) reading.append(el('p', { class: 'hint' }, '还没有正文，请先在第③步填写阶段与机制。'))
+}
 function goStep(step: number): void {
+  if (step === 4) showProofreadReading()
   const panel = optionalById<HTMLElement>(`step${step}`)
   if (!panel) return
   all<HTMLElement>(document, '.panel').forEach((item) => {
@@ -184,7 +207,7 @@ function goStep(step: number): void {
   all<HTMLButtonElement>(document, 'nav.steps button[data-step]').forEach((button) => {
     button.classList.toggle('active', Number(button.dataset.step) === step)
   })
-  if (step === 4) refresh()
+  if (step === 5) refresh()
 }
 
 function addRef(reference?: StrategyStructure['references'][number]): void {
@@ -251,8 +274,8 @@ function addContentBlock(container: HTMLElement, type: ContentType, item?: Conte
   const textFields = el(
     'div',
     { class: 'content-text-fields' },
-    el('label', { style: 'margin-top:8px' }, '内容（每行一段）', el('span', { class: 'required' }, '*')),
-    el('textarea', { class: 'code content-value', rows: 3, placeholder: '每行一段攻略文字' }),
+    el('label', { style: 'margin-top:8px' }, '正文 · Enter 另起一段 · Shift + Enter 同段换行', el('span', { class: 'required' }, '*')),
+    el('div', { class: 'content-value' }),
   )
   const imageFields = el(
     'div',
@@ -283,10 +306,17 @@ function addContentBlock(container: HTMLElement, type: ContentType, item?: Conte
   if (item?.type === 'image') {
     query<HTMLInputElement>(block, '.content-image-file').value = item.file
     query<HTMLInputElement>(block, '.content-image-caption').value = item.caption
-  } else if (item?.type === 'text') {
-    query<HTMLTextAreaElement>(block, '.content-value').value = item.value.join('\n')
   }
   container.append(block)
+  if (!isImage) {
+    block.dataset.blockId = item?.type === 'text' ? item.id : crypto.randomUUID()
+    const handle = createBodyEditor(query<HTMLElement>(block, '.content-value'), item?.type === 'text' ? item.doc : plainTextDocument([]), (history) => {
+      proofreadPanel?.changed(history)
+      refresh()
+    })
+    bodyEditors.set(block, handle)
+    query<HTMLElement>(block, '.content-value').addEventListener('focusin', () => { lastBodyEditor = handle; lastInput = null })
+  }
 }
 
 function sectionMeta(type: SectionType): SectionOption {
@@ -874,6 +904,7 @@ function insertAtCaret(input: HTMLInputElement | HTMLTextAreaElement, text: stri
 }
 
 function insertXivName(name: string): void {
+  if (lastBodyEditor) { lastBodyEditor.insertText(name); return }
   if (!lastInput) {
     alert('请先点击一个输入框，再点「插入名字」')
     return
@@ -911,13 +942,6 @@ function syncTime(): void {
   refresh()
 }
 
-function splitParagraphs(block: HTMLElement): string[] {
-  return query<HTMLTextAreaElement>(block, '.content-value')
-    .value.split('\n')
-    .map((value) => value.trim())
-    .filter(Boolean)
-}
-
 function collectContent(container: HTMLElement): ContentBlock[] {
   return all<HTMLElement>(container, ':scope > .content-block').map((block) => {
     if (block.dataset.contentType === 'image') {
@@ -927,7 +951,9 @@ function collectContent(container: HTMLElement): ContentBlock[] {
         caption: query<HTMLInputElement>(block, '.content-image-caption').value.trim(),
       }
     }
-    return { type: 'text', value: splitParagraphs(block) }
+    const handle = bodyEditors.get(block)
+    if (!handle) throw new Error('正文编辑器未初始化')
+    return { type: 'text', id: block.dataset.blockId!, doc: handle.getDocument() }
   })
 }
 
@@ -976,6 +1002,7 @@ function collect(): StrategyStructure {
     })
     .filter((phase) => phase.id || phase.name || phase.mechanics.length)
   return {
+    schemaVersion: 2,
     metadata: {
       id: byId<HTMLInputElement>('inp-id').value.trim(),
       name: byId<HTMLInputElement>('inp-name').value.trim(),
@@ -1014,9 +1041,9 @@ function renderPreview(structure: StrategyStructure, target: HTMLElement): void 
       if (item.type === 'image')
         container.append(el('span', { class: 'img-chip' }, `🖼 ${item.file}${item.caption ? ` · ${item.caption}` : ''}`))
       else {
-        item.value.forEach((value) => {
-          container.append(el('div', {}, value))
-        })
+        const text = el('div', {})
+        text.innerHTML = renderRichText(item.doc)
+        container.append(text)
       }
     })
   }
@@ -1052,6 +1079,7 @@ function renderPreview(structure: StrategyStructure, target: HTMLElement): void 
 }
 
 function refresh(): void {
+  proofreadPanel?.changed()
   const structure = collect()
   const errors = validateStructure(structure)
   const files = filesFromStructure(structure)
@@ -1067,6 +1095,7 @@ function refresh(): void {
     badge.innerHTML = '<span class="ok-badge">✓ 全部通过（0 错误）</span>'
     list.append(el('li', {}, '✅ 可以导出并进网站了'))
   }
+  if (byId<HTMLElement>('step4').classList.contains('active')) showProofreadReading()
   renderPreview(structure, byId<HTMLElement>('preview'))
   const fileList = byId<HTMLElement>('filelist')
   fileList.innerHTML = ''
@@ -1166,14 +1195,18 @@ function importTemplate(): void {
   structure.references.forEach(addRef)
   byId<HTMLElement>('macros').innerHTML = ''
   structure.macros.forEach(addMacro)
+  proofreadPanel?.changed(true)
+  bodyEditors.forEach(handle => handle.destroy())
+  bodyEditors.clear()
+  lastBodyEditor = undefined
   byId<HTMLElement>('phases').innerHTML = ''
   structure.phases.forEach(addPhase)
-  goStep(4)
+  goStep(5)
   alert(`导入成功！共 ${structure.phases.length} 个阶段。`)
 }
 
 function loadDemo(): void {
-  const demo: StrategyStructure = {
+  const demo = normalizeStructure({
     metadata: {
       id: 'demo',
       name: '示例副本',
@@ -1214,7 +1247,7 @@ function loadDemo(): void {
         ],
       },
     ],
-  }
+  })
   byId<HTMLTextAreaElement>('importArea').value = structureToJson(demo)
   importTemplate()
 }
@@ -1233,7 +1266,18 @@ function bindStaticEvents(): void {
   byId<HTMLButtonElement>('btn-add-phase').addEventListener('click', () => addPhase())
   byId<HTMLButtonElement>('btn-step-3-back').addEventListener('click', () => goStep(2))
   byId<HTMLButtonElement>('btn-step-3-next').addEventListener('click', () => goStep(4))
+  byId<HTMLButtonElement>('btn-step-4-back').addEventListener('click', () => goStep(3))
+  byId<HTMLButtonElement>('btn-step-4-next').addEventListener('click', () => goStep(5))
   byId<HTMLButtonElement>('btn-download-template').addEventListener('click', downloadTemplate)
+  byId<HTMLButtonElement>('btn-download-legacy').addEventListener('click', () => {
+    if (!confirm('导出旧版纯文本 JSON 会丢失加粗、字号和颜色。继续？')) return
+    const legacy = JSON.parse(structureToJson(collect()), (_key, value: unknown) => {
+      if (isRecord(value) && value.type === 'text' && 'doc' in value) return { type: 'text', value: richTextLines(value.doc as import('@xivstrat/content-schema').RichTextDocument) }
+      return value
+    }) as Record<string, unknown>
+    delete legacy.schemaVersion
+    downloadFile('strategy-legacy.json', JSON.stringify(legacy, null, 2))
+  })
   byId<HTMLButtonElement>('btn-copy-all-files').addEventListener('click', copyAllFiles)
   byId<HTMLButtonElement>('btn-download-bundle').addEventListener('click', downloadBundle)
   byId<HTMLButtonElement>('btn-load-demo').addEventListener('click', loadDemo)
@@ -1256,7 +1300,7 @@ function bindStaticEvents(): void {
 function bindInputTracking(): void {
   document.addEventListener('focusin', (event) => {
     const target = event.target
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) lastInput = target
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) { lastInput = target; lastBodyEditor = undefined }
   })
   document.addEventListener('input', (event) => {
     const target = event.target
@@ -1285,6 +1329,15 @@ export function initEditor(): void {
   initialized = true
   bindStaticEvents()
   bindInputTracking()
+  proofreadPanel = createProofreadPanel(byId<HTMLElement>('proofread'), collect, id => {
+    for (const [block, handle] of bodyEditors) if (block.isConnected && block.dataset.blockId === id) return handle
+    return undefined
+  }, (blockId, paragraph, from, to) => showProofreadReading({ blockId, paragraph, from, to }))
+  new MutationObserver(records => {
+    if (records.every(record => (record.target as HTMLElement).closest?.('.content-value'))) return
+    for (const [block, handle] of bodyEditors) if (!block.isConnected) { handle.destroy(); bodyEditors.delete(block); if (lastBodyEditor === handle) lastBodyEditor = undefined }
+    refresh()
+  }).observe(byId<HTMLElement>('phases'), { childList: true, subtree: true })
   addRef()
   addMacro()
   addPhase()
