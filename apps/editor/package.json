@@ -9,16 +9,38 @@
     "github:app:test": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/test-github-app.ts",
     "github:submission:test": "node --experimental-strip-types --test src/server/github/app.test.ts src/server/github/env.test.ts src/server/github/submission.test.ts",
     "github:submission:e2e": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/test-create-submission.ts",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "proofread:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/proofread-server.ts",
+    "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/lib/proofread/panel.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.20",
     "@octokit/app": "^16.1.4",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@tiptap/core": "^3.31.3",
+    "@tiptap/extension-bold": "^3.31.3",
+    "@tiptap/extension-document": "^3.31.3",
+    "@tiptap/extension-hard-break": "^3.31.3",
+    "@tiptap/extension-italic": "3.31.3",
+    "@tiptap/extension-link": "3.31.3",
+    "@tiptap/extension-paragraph": "^3.31.3",
+    "@tiptap/extension-strike": "3.31.3",
+    "@tiptap/extension-text": "^3.31.3",
+    "@tiptap/extension-underline": "3.31.3",
+    "@tiptap/extensions": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "3.31.3",
     "@xivstrat/content-schema": "workspace:*",
-    "astro": "6.1.5"
+    "astro": "6.1.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.8",
     "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "sass": "^1.104.0",
     "typescript": "6.0.2"
   },
   "engines": {

@@ -1,4 +1,4 @@
-import { normalizeStructure } from '@xivstrat/content-schema'
+import { normalizeStructure, renderRichText } from '@xivstrat/content-schema'
 import type {
   ContentBlock,
   DutyType,
@@ -90,9 +90,7 @@ function generateContent(
       lines.push(...generateImageRow([item], dutyId, phaseDirectory, indent))
       return
     }
-    item.value.forEach((value) => {
-      lines.push(`${indent}<div class="paragraph">`, `${indent}  ${escAstroText(value)}`, `${indent}</div>`)
-    })
+    lines.push(renderRichText(item.doc, true).split('\n').map(line => indent + line).join('\n'))
   })
 }
 
