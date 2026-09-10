@@ -46,10 +46,11 @@ export function createProofreadPanel(
   const fingerprint = (): string => JSON.stringify([terms.value, snapshotBlocks(collect())])
   const render = (): void => {
     list.replaceChildren()
+    const blocksById = new Map(snapshotBlocks(collect()).map((block) => [block.blockId, block]))
     for (const s of suggestions) {
       const card = document.createElement('article')
       card.className = 'proofread-suggestion'
-      const block = snapshotBlocks(collect()).find((b) => b.blockId === s.blockId)
+      const block = blocksById.get(s.blockId)
       const path = block ? snapshotLabel(block.path) : '正文已删除'
       for (const text of [
         path,
@@ -123,10 +124,10 @@ export function createProofreadPanel(
     }
   }
   const changed = (force = false): void => {
-    if (applying || !baseline || expired || (!force && fingerprint() === baseline)) return
+    if (applying || !baseline || (expired && !force) || (!force && fingerprint() === baseline)) return
     expired = true
     suggestions.forEach((s) => {
-      if (s.status === 'pending') s.status = 'stale'
+      if (s.status === 'pending' || (force && s.status === 'accepted')) s.status = 'stale'
     })
     status.textContent = '正文、标题、结构或术语已变化，本轮建议已过期，请重新校对。'
     render()

@@ -11,7 +11,7 @@
     "github:submission:e2e": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/test-create-submission.ts",
     "preview": "astro preview",
     "proofread:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/proofread-server.ts",
-    "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts"
+    "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/lib/proofread/panel.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

@@ -1,3 +1,4 @@
+import { Mark } from '@tiptap/pm/model'
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import { closeHistory } from '@tiptap/pm/history'
 
@@ -25,14 +26,30 @@ export function replacementTransaction(
   const start = range.from + left
   const end = range.to - right
   const markSets: string[] = []
-  let marks = state.doc.resolve(start).marks()
+  let marks: readonly Mark[] = []
+  if (start === end) {
+    // Inherit from the original span, never its outside neighbour. At an
+    // interior boundary both sides must agree, including link/color attrs.
+    const position = state.doc.resolve(start)
+    const before = position.nodeBefore
+    const after = position.nodeAfter
+    const source = start === range.from ? after : start === range.to ? before : null
+    if (source) {
+      if (!source.isText) return null
+      marks = source.marks
+    } else {
+      if (!before?.isText || !after?.isText || !Mark.sameSet(before.marks, after.marks)) return null
+      marks = before.marks
+    }
+  }
   let unsupported = false
-  state.doc.nodesBetween(start, end, (node) => {
-    if (node.isText) {
-      marks = node.marks
-      markSets.push(JSON.stringify(node.marks.map((mark) => mark.toJSON())))
-    } else if (node.isLeaf) unsupported = true
-  })
+  if (start !== end)
+    state.doc.nodesBetween(start, end, (node) => {
+      if (node.isText) {
+        marks = node.marks
+        markSets.push(JSON.stringify(node.marks.map((mark) => mark.toJSON())))
+      } else if (node.isLeaf) unsupported = true
+    })
   if (unsupported || new Set(markSets).size > 1) return null
   const text = replacement.slice(left, replacement.length - right)
   const tr = closeHistory(state.tr)

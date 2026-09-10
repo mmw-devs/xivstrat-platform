@@ -16,7 +16,7 @@ const schema = new Schema({
     italic: {},
     underline: {},
     strike: {},
-    link: { attrs: { href: {} } },
+    link: { attrs: { href: {} }, inclusive: false },
     textStyle: { attrs: { color: {} } },
   },
 })
@@ -84,4 +84,47 @@ test('emoji replacement never splits a surrogate pair', () => {
   const tr = replacementTransaction(state, { from: 1, to: 3 }, '😀', '😁')
   assert.ok(tr)
   assert.equal(state.apply(tr).doc.textContent, '😁 保留')
+})
+
+test('insertions use original-side marks at boundaries, including non-inclusive links and color', () => {
+  const marks = [
+    schema.mark('bold'),
+    schema.mark('link', { href: 'https://example.com' }),
+    schema.mark('textStyle', { color: '#f87171' }),
+  ]
+  for (const replacement of ['治疗H', 'H治疗']) {
+    const state = EditorState.create({
+      schema,
+      doc: schema.node('doc', null, [
+        schema.node('paragraph', null, [schema.text('A '), schema.text('H', marks), schema.text(' B')]),
+      ]),
+    })
+    const tr = replacementTransaction(state, { from: 3, to: 4 }, 'H', replacement)
+    assert.ok(tr)
+    const paragraph = state.apply(tr).doc.child(0)
+    assert.equal(paragraph.child(1).text, replacement)
+    assert.deepEqual(paragraph.child(1).marks, marks)
+    assert.equal(paragraph.child(0).text, 'A ')
+    assert.equal(paragraph.child(2).text, ' B')
+  }
+})
+
+test('middle insertion refuses incompatible marks, permits a uniform text run', () => {
+  for (const rightMarks of [[], [schema.mark('bold')]]) {
+    const state = EditorState.create({
+      schema,
+      doc: schema.node('doc', null, [
+        schema.node('paragraph', null, [
+          schema.text('H', [schema.mark('bold')]),
+          schema.text('1', rightMarks),
+        ]),
+      ]),
+    })
+    const tr = replacementTransaction(state, { from: 1, to: 3 }, 'H1', 'H治疗1')
+    if (!rightMarks.length) assert.ok(tr === null)
+    else {
+      assert.ok(tr)
+      assert.equal(state.apply(tr).doc.child(0).child(0).text, 'H治疗1')
+    }
+  }
 })

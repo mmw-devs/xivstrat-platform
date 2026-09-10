@@ -89,7 +89,7 @@ function normalizeContent(value: unknown): ContentBlock | null {
   }
   if ('doc' in value && (typeof value.id !== 'string' || !value.id || value.id.length > 100)) throw new Error('新版正文缺少有效 id')
   if ('doc' in value && 'value' in value) throw new Error('正文不能同时包含 doc 和 value')
-  return { type, id: typeof value.id === 'string' && value.id ? value.id : crypto.randomUUID(), doc: 'doc' in value ? parseRichText(value.doc) : plainTextDocument(asTextArray(value.value)) }
+  return { type, id: typeof value.id === 'string' && value.id ? value.id : crypto.randomUUID(), doc: 'doc' in value ? parseRichText(value.doc) : parseRichText(plainTextDocument(asTextArray(value.value))) }
 }
 
 function normalizeSection(value: unknown): StrategySection | null {

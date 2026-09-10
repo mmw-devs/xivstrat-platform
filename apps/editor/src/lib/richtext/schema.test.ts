@@ -106,3 +106,16 @@ test('v2 duplicate body ids cannot corrupt proofreading targeting', () => {
   section.content.push(structuredClone(section.content[0]!))
   assert.throws(() => normalizeStructure(structure))
 })
+
+test('legacy migration enforces v2 limits and valid boundary data remains serializable', () => {
+  const withLines = (value: string[]) => ({
+    phases: [{ mechanics: [{ sections: [{ type: 'note', content: [{ type: 'text', value }] }] }] }],
+  })
+  for (const lines of [Array<string>(5001).fill('x'), ['x'.repeat(200001)]]) {
+    assert.throws(() => normalizeStructure(withLines(lines)))
+  }
+  for (const lines of [Array<string>(5000).fill('x'), ['x'.repeat(200000)]]) {
+    const structure = normalizeStructure(withLines(lines))
+    assert.deepEqual(normalizeStructure(JSON.parse(structureToJson(structure))), structure)
+  }
+})
