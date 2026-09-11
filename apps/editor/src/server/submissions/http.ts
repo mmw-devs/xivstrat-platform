@@ -130,6 +130,14 @@ export async function handleSubmissionRequest(
     })
   }
 
+  const contentType = request.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase()
+  if (contentType !== 'application/json') {
+    return errorResponse(415, {
+      code: 'UNSUPPORTED_MEDIA_TYPE',
+      message: '请求正文必须使用 application/json',
+    })
+  }
+
   let raw: unknown
   try {
     raw = await request.json()

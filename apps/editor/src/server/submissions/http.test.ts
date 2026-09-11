@@ -48,10 +48,10 @@ const submissionResult: SubmissionResult = {
   },
 }
 
-function request(body: string, method = 'POST'): Request {
+function request(body: string, method = 'POST', contentType = 'application/json'): Request {
   return new Request('http://localhost/api/submissions', {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': contentType },
     ...(method === 'POST' ? { body } : {}),
   })
 }
@@ -87,6 +87,48 @@ test('malformed JSON returns 400 without invoking createSubmission', async () =>
   assert.equal(response.status, 400)
   assert.equal(calls, 0)
   assert.equal((await response.json()).error.code, 'JSON_PARSE_ERROR')
+})
+
+test('text/plain returns 415 without invoking createSubmission even when the body is valid JSON', async () => {
+  let calls = 0
+  let jsonCalls = 0
+  const unsupportedRequest = request(JSON.stringify(rawSubmission), 'POST', 'text/plain')
+  unsupportedRequest.json = async () => {
+    jsonCalls += 1
+    return rawSubmission
+  }
+  const response = await handleSubmissionRequest(
+    unsupportedRequest,
+    dependencies(async () => {
+      calls += 1
+      return submissionResult
+    }),
+  )
+
+  assert.equal(response.status, 415)
+  assert.equal(jsonCalls, 0)
+  assert.equal(calls, 0)
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: {
+      code: 'UNSUPPORTED_MEDIA_TYPE',
+      message: '请求正文必须使用 application/json',
+    },
+  })
+})
+
+test('application/json with a charset enters the existing submission flow', async () => {
+  let calls = 0
+  const response = await handleSubmissionRequest(
+    request(JSON.stringify(rawSubmission), 'POST', 'application/json; charset=utf-8'),
+    dependencies(async () => {
+      calls += 1
+      return submissionResult
+    }),
+  )
+
+  assert.equal(response.status, 201)
+  assert.equal(calls, 1)
 })
 
 test('normalization failures return 400 without invoking createSubmission', async () => {
