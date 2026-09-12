@@ -10,6 +10,7 @@
     "github:submission:test": "node --experimental-strip-types --test src/server/github/app.test.ts src/server/github/env.test.ts src/server/github/submission.test.ts",
     "github:submission:e2e": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/test-create-submission.ts",
     "submission:http:test": "node --experimental-strip-types --test src/server/submissions/http.test.ts",
+    "submission:ui:test": "node --experimental-strip-types --test src/lib/editor/submission.test.ts",
     "preview": "astro preview",
     "proofread:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/proofread-server.ts",
     "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/lib/proofread/panel.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts"
