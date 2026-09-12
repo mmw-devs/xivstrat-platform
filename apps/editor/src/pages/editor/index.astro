@@ -97,6 +97,14 @@
   .proofread-highlight { background:#facc15; color:#171a21; outline:2px solid #facc15; border-radius:2px; }
   .proofread-body h3 { font-size:14px; color:var(--dim); font-weight:normal; }
   .proofread-suggestion p { margin:4px 0; }
+  .submission-card { border-color:rgba(139,92,246,.55); }
+  .submission-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .submission-result { display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin-top:10px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; }
+  .submission-result.success { border-color:rgba(34,197,94,.55); background:rgba(34,197,94,.1); color:#bbf7d0; }
+  .submission-result.error { border-color:rgba(239,68,68,.55); background:rgba(239,68,68,.1); color:#fecaca; }
+  .submission-result.warning { border-color:rgba(250,204,21,.55); background:rgba(250,204,21,.1); color:#fef08a; }
+  .submission-result a { color:#c4b5fd; }
+  .submission-id { color:var(--dim); font:12px Consolas, "Courier New", monospace; overflow-wrap:anywhere; }
   @media(max-width:900px) { .body-workspace { grid-template-columns:minmax(0,1fr); } #proofread { position:static; max-height:none; } .body-workspace .row { flex-wrap:wrap; } .body-workspace .row > * { min-width:0; } main { padding:12px; } }
 </style>
 </head>
@@ -239,6 +247,15 @@
 
     <h2 class="sec">校验结果 <span id="vbadge"></span></h2>
     <ul class="vlist" id="vlist"></ul>
+
+    <section class="card submission-card" aria-labelledby="submission-title">
+      <h2 class="sec" id="submission-title">提交审核</h2>
+      <div class="submission-actions">
+        <button id="btn-submit-review" type="button" class="btn primary">提交审核</button>
+        <span class="hint">提交当前编辑器内容并创建审核 PR；提交结果不确定时请等待维护者确认。</span>
+      </div>
+      <div id="submission-status" class="hint" role="status" aria-live="polite"></div>
+    </section>
 
     <h2 class="sec" style="margin-top:18px">实时预览（网站效果模拟）</h2>
     <div class="prev" id="preview"></div>
