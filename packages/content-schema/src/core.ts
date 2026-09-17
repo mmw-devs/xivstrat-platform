@@ -5,6 +5,7 @@ import {
   DUTY_TYPES,
   type DutyType,
   SECTION_TYPES,
+  SECTION_RULES,
   type SectionType,
   STRATEGY_STATUSES,
   type StrategyMechanic,
@@ -14,12 +15,6 @@ import {
   type StrategyStatus,
   type StrategyStructure,
 } from './types.ts'
-
-const SECTION_LABELS: Record<SectionType, string> = {
-  mechanic: '机制',
-  solution: '解法',
-  note: '注意',
-}
 
 const META_LABELS: Record<keyof StrategyMetadata, string> = {
   id: '编号',
@@ -201,12 +196,12 @@ function validateContent(content: ContentBlock[], parentPath: string, errors: st
 
 function sectionLabel(section: StrategySection, index: number): string {
   const title = section.title ? `：${section.title}` : ''
-  return `${SECTION_LABELS[section.type]} ${index + 1}${title}`
+  return `${SECTION_RULES[section.type].label} ${index + 1}${title}`
 }
 
 function validateSection(section: StrategySection, parentPath: string, errors: string[], index: number): void {
   const path = breadcrumb(parentPath, sectionLabel(section, index))
-  if ((section.type === 'mechanic' || section.type === 'solution') && !section.title) {
+  if (SECTION_RULES[section.type].titleRequired && !section.title) {
     errors.push(`${breadcrumb(path, '标题')}：未填写`)
   }
   validateContent(section.content, path, errors)

@@ -1,0 +1,139 @@
+.editor-header {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: var(--border-width) solid var(--border-default);
+  background: var(--surface-panel);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+.editor-header h1 {
+  margin: 0;
+  font-size: var(--type-page-size);
+  font-weight: var(--type-page-weight);
+  line-height: var(--type-page-leading);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-6);
+}
+.editor-header .sub {
+  font-size: var(--type-label-size);
+  color: var(--text-secondary);
+  font-weight: var(--type-body-weight);
+}
+.steps {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-12);
+  border-bottom: var(--border-width) solid var(--border-default);
+  background: var(--surface-panel);
+  flex-wrap: wrap;
+}
+.steps .active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.editor-main {
+  max-width: var(--layout-max);
+  margin-inline: auto;
+  padding: var(--space-12) var(--space-12) var(--space-40);
+}
+.panel {
+  display: none;
+}
+.panel.active {
+  display: grid;
+  gap: var(--space-6);
+}
+.sec {
+  font: var(--type-section-weight) var(--type-section-size)/var(--type-section-leading) var(--font-ui);
+  margin: var(--space-4) 0;
+  color: var(--color-primary-text);
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-field-min)), 1fr));
+  gap: var(--space-6);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.row > * {
+  flex: 1;
+  min-width: 0;
+}
+.row > .btn {
+  flex: 0 0 auto;
+}
+.actions, .img-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+.mt-1 {
+  margin-top: var(--space-2);
+}
+.mt-2 {
+  margin-top: var(--space-4);
+}
+.mt-3 {
+  margin-top: var(--space-6);
+}
+.mt-4 {
+  margin-top: var(--space-8);
+}
+.mt-6 {
+  margin-top: var(--space-12);
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.grow-2 {
+  flex: 2;
+  min-width: 0;
+}
+.shrink-0 {
+  flex: 0 0 auto;
+  width: auto;
+}
+.img-row > .field-input {
+  flex: 1;
+  min-width: 8rem;
+}
+.body-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--layout-sidebar);
+  gap: var(--space-8);
+  align-items: start;
+}
+/* Breakpoints are intentionally literals: CSS custom properties cannot drive media queries. */
+@media (max-width: 56.25rem) {
+  .body-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-main, .editor-header, .steps {
+    padding-inline: var(--space-6);
+  }
+}
+@media (max-width: 40rem) {
+  .row > :not(.btn) {
+    flex-basis: 100%;
+  }
+  .editor-header {
+    position: static;
+  }
+}
+.steps .btn.active:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}

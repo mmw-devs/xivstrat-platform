@@ -4,6 +4,12 @@ export type ContentType = (typeof CONTENT_TYPES)[number]
 export const SECTION_TYPES = ['mechanic', 'solution', 'note'] as const
 export type SectionType = (typeof SECTION_TYPES)[number]
 
+export const SECTION_RULES = {
+  mechanic: { label: '机制', titleRequired: true },
+  solution: { label: '解法', titleRequired: true },
+  note: { label: '注意', titleRequired: false },
+} as const satisfies Record<SectionType, { label: string; titleRequired: boolean }>
+
 export const DUTY_TYPES = ['extreme', 'savage', 'ultimate', 'other'] as const
 export type DutyType = (typeof DUTY_TYPES)[number]
 

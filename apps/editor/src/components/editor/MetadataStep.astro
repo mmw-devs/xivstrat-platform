@@ -1,0 +1,21 @@
+<section class="panel active" id="step1">
+    <div class="help">所有必填项用<span class="required">*</span>号表示。</div>
+    <div class="grid2">
+      <div><label class="field-label" for="inp-id">英文代号 id（如 enou，只能英文小写/数字/短横线）<span class="required">*</span></label><input id="inp-id" placeholder="enou" class="field-input" /></div>
+      <div><label class="field-label" for="inp-name">副本全名<span class="required">*</span></label><input id="inp-name" placeholder="恩欧歼殛战" class="field-input" /></div>
+      <div><label class="field-label" for="inp-short">简称<span class="required">*</span></label><input id="inp-short" placeholder="极恩欧" class="field-input" /></div>
+      <div><label class="field-label" for="inp-type">类型<span class="required">*</span></label>
+        <select id="inp-type" class="field-input"><option value="extreme">极神</option><option value="savage">零式</option><option value="ultimate">绝本</option><option value="other">其他</option></select>
+      </div>
+      <div><label class="field-label" for="inp-title">页面标题<span class="required">*</span></label><input id="inp-title" placeholder="恩欧歼殛战 攻略" class="field-input" /></div>
+      <div><label class="field-label" for="inp-desc">描述（一句话）<span class="required">*</span></label><input id="inp-desc" placeholder="最终幻想14 恩欧歼殛战 超详解动态图文攻略" class="field-input" /></div>
+      <div><label class="field-label" for="inp-banner">横幅图路径<span class="required">*</span></label><div class="img-row"><input id="inp-banner" placeholder="banners/07/enou.webp" class="field-input" /><input type="file" id="f-banner" accept="image/*" hidden class="field-input" /><label for="f-banner" class="btn sm shrink-0" title="选择本地图片">🖼 选图</label><button id="btn-upload-banner" class="btn sm">☁️ 上传</button><span class="hint" id="st-banner"></span></div></div>
+      <div><label class="field-label" for="inp-date">发布时间（datetime）<span class="required">*</span></label><div class="row"><input id="inp-date" placeholder="26/04/28 12:00" class="field-input" /><button id="btn-sync-time" class="btn sm shrink-0" title="用当前本地时间填充">🕐 现在</button></div></div>
+      <div><label class="field-label" for="inp-status">状态<span class="required">*</span></label>
+        <select id="inp-status" class="field-input"><option value="draft">草稿</option><option value="review">审核中</option><option value="done">已完成</option></select>
+      </div>
+      <div><label class="field-label" for="inp-video">B站视频链接（可留空）</label><input id="inp-video" placeholder="https://www.bilibili.com/video/xxx" class="field-input" /></div>
+      <div><label class="field-label" for="inp-group">攻略组署名<span class="required">*</span></label><input id="inp-group" placeholder="MMW攻略组" class="field-input" /></div>
+    </div>
+    <div class="mt-4"><button id="btn-step-1-next" class="btn primary">下一步：参考与宏 →</button></div>
+  </section>

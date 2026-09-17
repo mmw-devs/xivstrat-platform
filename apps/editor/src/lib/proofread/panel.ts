@@ -26,6 +26,7 @@ export function createProofreadPanel(
   const list = document.createElement('div')
   list.className = 'proofread-list'
   const terms = document.createElement('input')
+  terms.className = 'field-input'
   terms.placeholder = '术语偏好（可选），例如：治疗统称奶妈；保留 H1/H2'
   terms.setAttribute('aria-label', '校对术语偏好')
   terms.maxLength = 2000

@@ -1,0 +1,42 @@
+.submission-card {
+  border-color: var(--color-primary-border);
+}
+.submission-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.submission-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+.submission-result.success {
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+.submission-result.error {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+.submission-result.warning {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+.submission-result a {
+  color: var(--link-color);
+}
+.submission-id {
+  color: var(--text-secondary);
+  font: var(--type-caption-size)/var(--type-caption-leading) var(--font-mono);
+  overflow-wrap: anywhere;
+}

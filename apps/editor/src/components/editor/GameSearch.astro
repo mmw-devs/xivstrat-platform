@@ -1,0 +1,25 @@
+    <details id="xivBox" class="disclosure">
+      <summary>🎮 XIVAPI 游戏数据查询（FFXIV 解包素材：技能/状态/敌人名，图标可直接入图库）</summary>
+      <div class="card">
+        <div class="row">
+          <select id="xiv-sheet" class="shrink-0 field-input">
+            <option value="Action">技能 Action</option>
+            <option value="Status">状态 Status</option>
+            <option value="BNpcName">敌人名 BNpcName</option>
+          </select>
+          <select id="xiv-lang" class="shrink-0 field-input">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+          <input id="xiv-q" placeholder="输入关键词，如 灼热 或 Fire" class="grow-2 field-input" />
+          <button id="btn-xiv-search" class="btn sm primary">搜索</button>
+          <input id="xiv-key" placeholder="API Key（可选，提高限额）" class="grow field-input" />
+          <button id="btn-xiv-save-key" class="btn sm">保存 Key</button>
+        </div>
+        <div class="hint mt-2">先点击你要填入的目标输入框，再点结果的「插入名字」→ 自动填入准确的游戏内名字；「图标→图库」把图标加入图片图库；「复制图标地址」复制直链。</div>
+        <div class="hint mt-1">数据与素材来自 XIVAPI（v2.xivapi.com），素材版权归 SQUARE ENIX；未配置 Key 也可用（限额较低）。</div>
+        <div id="xiv-status" class="hint mt-2"></div>
+        <div id="xiv-results" class="mt-2"></div>
+      </div>
+    </details>
