@@ -80,3 +80,25 @@ test('import then edit metadata and rich text submits the current document, not 
   expect(requests).toEqual([expected])
   expect(await saveLocal(page)).toEqual(expected)
 })
+
+test('rejected unrelated JSON preserves unsaved editor content and subsequent submission', async ({ page }) => {
+  const requests = await mockSubmission(page)
+  await page.locator('[data-step="5"]').click()
+  await page.locator('#btn-load-demo').click()
+  await page.locator('[data-step="1"]').click()
+  await page.locator('#inp-title').fill('误导入前尚未保存的标题')
+  await page.locator('[data-step="3"]').click()
+  await page.getByRole('textbox', { name: '攻略正文', exact: true }).first().fill('误导入前尚未保存的正文')
+  await page.locator('[data-step="5"]').click()
+  const before = await saveLocal(page)
+  for (const raw of ['{"phases":[]}', '{"foo":"完全无关的数据","phases":[]}', '{"metadata":{},"phases":[]}']) {
+    await page.locator('#importArea').fill(raw)
+    await page.getByRole('button', { name: '导入已有攻略', exact: true }).click()
+    await expect(page.locator('#import-status')).toContainText('导入失败')
+    await expect(page.locator('#preview')).toContainText('误导入前尚未保存的正文')
+    expect(await saveLocal(page)).toEqual(before)
+  }
+  await page.getByRole('button', { name: '提交审核', exact: true }).click()
+  await expect(page.locator('#submission-status')).toContainText('提交成功')
+  expect(requests).toEqual([before])
+})
