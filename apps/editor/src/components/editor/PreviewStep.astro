@@ -1,0 +1,40 @@
+---
+import CosSettings from './CosSettings.astro'
+import ImageLibrary from './ImageLibrary.astro'
+import GameSearch from './GameSearch.astro'
+---
+<section class="panel" id="step5">
+    <p id="import-status" class="hint feedback" role="status" aria-live="polite"></p>
+    <div class="actions">
+      <button id="btn-load-demo" class="btn">🎲 载入示例</button>
+    </div>
+
+    <CosSettings />
+
+    <ImageLibrary />
+
+    <GameSearch />
+
+    <h2 class="sec">校验结果 <span id="vbadge"></span></h2>
+    <ul class="vlist" id="vlist"></ul>
+
+    <section class="card submission-card" aria-labelledby="submission-title">
+      <h2 class="sec" id="submission-title">提交审核</h2>
+      <div class="submission-actions">
+        <button id="btn-submit-review" type="button" class="btn primary">提交审核</button>
+        <button id="btn-save-local" type="button" class="btn" aria-describedby="local-save-hint">保存到本地（JSON）</button>
+      </div>
+      <p class="hint">提交当前编辑器内容并创建审核 PR；提交结果不确定时请等待维护者确认。</p>
+      <p id="local-save-hint" class="hint">保存到本地是临时导出出口：将当前攻略保存为 JSON 文件，可通过下方导入恢复；不会提交审核，也不会自动保存后续修改。</p>
+      <div id="submission-status" class="hint" role="status" aria-live="polite"></div>
+      <div id="local-save-status" class="hint" role="status" aria-live="polite"></div>
+    </section>
+
+    <h2 class="sec mt-4">内容预览</h2>
+    <div class="prev" id="preview"></div>
+
+
+    <h2 class="sec mt-4">导入已有攻略（JSON）</h2>
+    <textarea class="code field-input" id="importArea" placeholder="粘贴已有攻略 JSON（兼容旧版数据），然后点击导入"></textarea>
+    <div class="mt-2"><button id="btn-import-template" class="btn primary">导入已有攻略</button></div>
+  </section>

@@ -14,7 +14,9 @@
     "submission:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/submission-server.ts",
     "preview": "astro preview",
     "proofread:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/proofread-server.ts",
-    "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/lib/proofread/panel.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts"
+    "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/lib/proofread/panel.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts",
+    "editor:state:test": "node --experimental-strip-types --test src/lib/editor/state.test.ts src/lib/editor/architecture.test.ts src/lib/editor/import.test.ts",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
@@ -40,6 +42,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.8",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

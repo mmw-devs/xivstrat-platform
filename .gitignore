@@ -10,3 +10,7 @@ build/
 *.log
 *.pem
 *.key
+
+# Browser regression artifacts
+playwright-report/
+test-results/

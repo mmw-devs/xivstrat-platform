@@ -1,5 +1,3 @@
-export type GeneratedFiles = Record<string, string>
-
 export interface ImageLibraryEntry {
   name: string
   path: string

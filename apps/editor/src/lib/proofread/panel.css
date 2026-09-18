@@ -1,0 +1,32 @@
+.proofread-panel {
+  position: sticky;
+  top: var(--layout-sticky-offset);
+  max-height: 80vh;
+  overflow: auto;
+}
+.proofread-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.proofread-suggestion {
+  border-top: var(--border-width) solid var(--border-default);
+  padding-block: var(--space-6);
+  overflow-wrap: anywhere;
+  font-size: var(--type-label-size);
+}
+.proofread-suggestion p {
+  margin-block: var(--space-2);
+}
+.proofread-body h3 {
+  font: var(--type-label-weight) var(--type-label-size)/var(--type-label-leading) var(--font-ui);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+@media (max-width: 56.25rem) {
+  .proofread-panel {
+    position: static;
+    max-height: none;
+  }
+}

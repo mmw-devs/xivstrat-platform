@@ -1,0 +1,19 @@
+    <details id="imgLibBox" class="disclosure">
+      <summary>🖼 图片图库（重复使用攻略图片或图标）</summary>
+      <div class="card">
+        <div class="row">
+          <input id="lib-name" placeholder="名称（如 糖糖慕斯怪图标）" class="grow field-input" />
+          <input type="file" id="lib-file" accept="image/*" hidden class="field-input" />
+          <label for="lib-file" class="btn sm shrink-0" title="选择本地图片">🖼 选图</label>
+          <input id="lib-path" placeholder="COS 路径（选图后自动生成，可改）" class="grow-2 field-input" />
+          <button id="btn-lib-add" class="btn sm primary">＋ 加入图库</button>
+        </div>
+        <div class="hint mt-2">选图后路径自动生成；建议先「☁️ 上传」到 COS 再用。也可以只填"名称+路径"手动加入。</div>
+        <div id="lib-list" class="mt-2"></div>
+        <div class="actions mt-2">
+          <button id="btn-lib-upload" class="btn sm">☁️ 上传刚选的图到 COS</button>
+          <button id="btn-lib-clear" class="btn sm danger">清空图库</button>
+          <span class="hint" id="lib-status"></span>
+        </div>
+      </div>
+    </details>

@@ -18,11 +18,11 @@ import {
 import { BanIcon } from '../../vendor/tiptap-ui/components/tiptap-icons/ban-icon'
 import { useTiptapEditor } from '../../vendor/tiptap-ui/hooks/use-tiptap-editor'
 import { TEXT_COLORS } from '@xivstrat/content-schema'
-import '../../vendor/tiptap-ui/styles/_variables.scss'
+import '../../styles/tiptap-adapter.css'
 import '../../vendor/tiptap-ui/styles/_keyframe-animations.scss'
 import './toolbar.scss'
 
-const colorLabels = ['红色', '黄色', '绿色', '蓝色', '紫色']
+const colorLabels = { '#f87171': '红色', '#facc15': '黄色', '#4ade80': '绿色', '#60a5fa': '蓝色', '#c084fc': '紫色' } satisfies Record<(typeof TEXT_COLORS)[number], string>
 const preserveSelection = (event: React.MouseEvent<HTMLButtonElement>): void => event.preventDefault()
 function ColorPopover({ editor }: { editor: Editor }): React.JSX.Element {
   useTiptapEditor(editor)
@@ -65,13 +65,13 @@ function ColorPopover({ editor }: { editor: Editor }): React.JSX.Element {
           >
             <BanIcon className="tiptap-button-icon" />
           </Button>
-          {TEXT_COLORS.map((value, index) => (
+          {TEXT_COLORS.map((value) => (
             <Button
               key={value}
               type="button"
               data-style="ghost"
-              aria-label={colorLabels[index]}
-              tooltip={colorLabels[index]}
+              aria-label={colorLabels[value]}
+              tooltip={colorLabels[value]}
               data-active-state={color === value ? 'on' : 'off'}
               onClick={() => setColor(value)}
             >

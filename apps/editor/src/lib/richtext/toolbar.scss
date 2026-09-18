@@ -1,88 +1,63 @@
-// The official Tiptap primitives keep their own tokens and icon sizing.
-// Only block embedding and the existing editor's dark surface are adapted here.
 .content-value {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
+  border: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-panel);
   overflow: visible;
 }
 .content-value .body-toolbar[data-variant='fixed'] {
   position: relative;
   top: auto;
   height: auto;
-  min-height: 44px;
-  z-index: 1;
-  padding: 6px 8px;
+  min-height: var(--control-height-touch);
+  z-index: auto;
+  padding: var(--space-3) var(--space-4);
   border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 10px 10px 0 0;
-  background: var(--panel);
+  border-bottom: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+  background: var(--surface-panel);
   flex-wrap: wrap;
   overflow: visible;
 }
 .content-value .richtext-body {
   border: 0;
   background: transparent;
-  border-radius: 0 0 10px 10px;
-  min-height: 130px;
-  padding: 14px 16px;
-  line-height: 1.8;
+  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  min-height: calc(var(--control-height-touch) * 3);
+  padding: var(--space-8);
   &:focus {
     outline: none;
   }
 }
 .content-value:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.12);
-}
-.richtext-body a,
-.proofread-prose a,
-.prev .paragraph a {
-  color: #a5b4fc;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  border-color: var(--focus-ring-color);
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 .text-color-icon {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 16px;
-  border-bottom: 3px solid;
-  padding: 0 2px 2px;
+  font: var(--type-card-weight) var(--type-card-size)/1 var(--font-ui);
+  border-bottom: var(--border-accent-width) solid;
+  padding: 0 var(--space-1) var(--space-1);
 }
 .richtext-colors {
-  padding: 12px;
+  padding: var(--space-6);
 }
 .richtext-popover-label {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--dim);
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-caption-size);
+  color: var(--text-secondary);
 }
 .richtext-color-grid {
   display: flex;
-  gap: 4px;
+  gap: var(--space-2);
 }
 .richtext-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+  width: var(--type-section-size);
+  height: var(--type-section-size);
+  border-radius: var(--radius-small);
   display: block;
 }
-.tiptap-popover {
-  max-width: calc(100vw - 24px);
-  z-index: 100;
-}
-.tiptap-tooltip {
-  z-index: 110;
-}
-.tiptap-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.tiptap-button:disabled {
-  cursor: default;
-}
 .richtext-link-error {
-  color: #fca5a5;
-  font-size: 12px;
-  margin: 0 12px 12px;
+  color: var(--color-danger-text);
+  font-size: var(--type-caption-size);
+  margin: 0 var(--space-6) var(--space-6);
 }

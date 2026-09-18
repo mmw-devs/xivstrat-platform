@@ -1,0 +1,39 @@
+/* One default reading rhythm for editable, proofread and preview content. */
+.richtext-body, .proofread-prose, .prev .paragraph {
+  font-family: var(--font-content);
+  font-size: var(--type-content-size);
+  font-weight: var(--type-content-weight);
+  line-height: var(--type-content-leading);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.richtext-body p, .proofread-prose .paragraph, .prev .paragraph {
+  margin: 0 0 var(--space-3);
+  min-height: 1lh;
+}
+.richtext-body p:last-child, .proofread-prose .paragraph:last-child, .prev .paragraph:last-child {
+  margin-bottom: 0;
+}
+.richtext-body a, .proofread-prose a, .prev .paragraph a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+.proofread-highlight {
+  background: var(--highlight-bg);
+  color: var(--highlight-text);
+  outline: var(--focus-ring-width) solid var(--highlight-bg);
+  border-radius: var(--radius-small);
+}
+[data-section-type='mechanic'] {
+  --section-color: var(--section-mechanic-color);
+}
+[data-section-type='solution'] {
+  --section-color: var(--section-solution-color);
+}
+[data-section-type='note'] {
+  --section-color: var(--section-note-color);
+}
+.section-box, .prev .box {
+  border-color: color-mix(in srgb, var(--section-color) 65%, transparent);
+}

@@ -40,14 +40,16 @@ test('rejects unknown nodes, attributes and arbitrary styles', () => {
   }
   assert.throws(() => normalizeStructure({ schemaVersion: 99 }))
 })
-test('whitespace, empty paragraphs, emoji, hardBreak and HTML/Astro escaping', () => {
+test('whitespace, empty paragraphs, emoji, hardBreak and HTML escaping', () => {
   const doc = plainTextDocument([' a  b ', '', '<script>{danger}</script>😀'])
   doc.content[0]!.content!.push({ type: 'hardBreak' }, { type: 'text', text: '末尾' })
   assert.deepEqual(richTextLines(parseRichText(doc)), [' a  b \n末尾', '', '<script>{danger}</script>😀'])
-  const html = renderRichText(doc, true)
-  assert.ok(html.includes('&lt;script&gt;&#123;danger&#125;'))
+  const html = renderRichText(doc)
+  assert.ok(html.includes('&lt;script&gt;{danger}'))
   assert.ok(html.includes('<br />'))
   assert.ok(!html.includes('<script>'))
+  assert.ok(html.includes('<div class="paragraph"></div>'))
+  assert.ok(!html.includes('<div class="paragraph" style='))
 })
 
 test('all toolbar marks survive JSON and safe rendering; unsafe links are rejected', () => {
@@ -74,9 +76,9 @@ test('all toolbar marks survive JSON and safe rendering; unsafe links are reject
     ],
   })
   assert.deepEqual(parseRichText(JSON.parse(JSON.stringify(doc))), doc)
-  const html = renderRichText(doc, true, { paragraph: 0, from: 0, to: 1 })
+  const html = renderRichText(doc, { paragraph: 0, from: 0, to: 1 })
   for (const tag of ['strong', 'em', 'u', 's']) assert.ok(html.includes(`<${tag}>`))
-  assert.ok(html.includes('&quot;&amp;x=&#123;test&#125;'))
+  assert.ok(html.includes('&quot;&amp;x={test}'))
   assert.ok(html.includes('<mark class="proofread-highlight">H</mark>'))
   assert.ok(html.includes('rel="noopener noreferrer"'))
   for (const href of [

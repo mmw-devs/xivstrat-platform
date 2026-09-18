@@ -112,7 +112,6 @@ export function richTextLines(doc: RichTextDocument): string[] {
 }
 export function renderRichText(
   doc: RichTextDocument,
-  astro = false,
   highlight?: { paragraph: number; from: number; to: number },
 ): string {
   const escape = (s: string): string =>
@@ -120,8 +119,6 @@ export function renderRichText(
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/\{/g, astro ? '&#123;' : '{')
-      .replace(/\}/g, astro ? '&#125;' : '}')
   const tags: Record<BasicTextMark, string> = { bold: 'strong', italic: 'em', underline: 'u', strike: 's' }
   return parseRichText(doc)
     .content.map((p, paragraph) => {
@@ -155,7 +152,7 @@ export function renderRichText(
           return html
         })
         .join('')
-      return `<div class="paragraph" style="white-space:pre-wrap;min-height:1.6em">${inline}</div>`
+      return `<div class="paragraph">${inline}</div>`
     })
     .join('\n')
 }

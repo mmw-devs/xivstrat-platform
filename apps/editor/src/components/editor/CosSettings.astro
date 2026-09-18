@@ -1,0 +1,17 @@
+    <details id="cosSettingsBox" class="disclosure">
+      <summary>☁️ 图片直传 COS 设置（可选，配置后可在编辑器里直接上传图片到腾讯云）</summary>
+      <div class="card">
+        <div class="grid2">
+          <div><label class="field-label" for="cos-secret-id">SecretId</label><input id="cos-secret-id" placeholder="AKID..." autocomplete="off" class="field-input" /></div>
+          <div><label class="field-label" for="cos-secret-key">SecretKey</label><input id="cos-secret-key" type="password" placeholder="..." autocomplete="off" class="field-input" /></div>
+          <div><label class="field-label" for="cos-bucket">存储桶 Bucket</label><input id="cos-bucket" placeholder="xivstrat-1250000000" class="field-input" /></div>
+          <div><label class="field-label" for="cos-region">地域 Region</label><input id="cos-region" placeholder="ap-guangzhou" class="field-input" /></div>
+        </div>
+        <div class="row mt-3">
+          <button id="btn-save-cos" class="btn sm primary">保存设置</button>
+          <button id="btn-test-cos" class="btn sm">测试连接</button>
+          <span class="hint" id="cos-status"></span>
+        </div>
+        <div class="hint mt-2">⚠️ 密钥只保存在你当前浏览器（localStorage）。建议使用<b>子账号最小权限密钥</b>（只授权本存储桶读写），不要用主账号密钥。不配置也能用：把图片链接直接填进内容块即可。</div>
+      </div>
+    </details>
