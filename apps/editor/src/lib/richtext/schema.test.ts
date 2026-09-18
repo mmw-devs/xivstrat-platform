@@ -48,6 +48,8 @@ test('whitespace, empty paragraphs, emoji, hardBreak and HTML escaping', () => {
   assert.ok(html.includes('&lt;script&gt;{danger}'))
   assert.ok(html.includes('<br />'))
   assert.ok(!html.includes('<script>'))
+  assert.ok(html.includes('<div class="paragraph"></div>'))
+  assert.ok(!html.includes('<div class="paragraph" style='))
 })
 
 test('all toolbar marks survive JSON and safe rendering; unsafe links are rejected', () => {

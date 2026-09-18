@@ -152,7 +152,7 @@ export function renderRichText(
           return html
         })
         .join('')
-      return `<div class="paragraph" style="white-space:pre-wrap;min-height:1.6em">${inline}</div>`
+      return `<div class="paragraph">${inline}</div>`
     })
     .join('\n')
 }

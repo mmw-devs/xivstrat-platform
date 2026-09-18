@@ -7,6 +7,7 @@ import { parseTemplate } from '../lib/editor/import'
 import { mountAssets } from '../lib/editor/assets'
 import { mountPreview } from '../lib/editor/preview-view'
 import { mountSubmission } from '../lib/editor/submission-view'
+import { mountLocalSave } from '../lib/editor/local-save'
 import { createProofreadPanel, type ProofreadPanel } from '../lib/proofread/panel'
 import { renderReading, type ReadingHighlight } from '../lib/proofread/reading'
 import type { BodyEditorHandle } from '../lib/richtext/editor'
@@ -77,6 +78,7 @@ export function initEditor(root: HTMLElement) {
   panel = createProofreadPanel(byId('proofread'), collect, authoring.findBody,
     (blockId, paragraph, from, to) => reading({ blockId, paragraph, from, to }))
   mountSubmission(byId, collect, signal)
+  mountLocalSave(byId, collect, signal)
   mountAssets(byId, () => ({ body: lastBody, input: lastInput?.isConnected ? lastInput : undefined }), signal)
 
   root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(button => button.addEventListener('click', () => goStep(Number(button.dataset.step)), { signal }))
@@ -96,7 +98,6 @@ export function initEditor(root: HTMLElement) {
   on('btn-import-template', () => {
     try {
       const structure = parseTemplate(byId<HTMLTextAreaElement>('importArea').value)
-      if (!structure.phases.length) { byId('import-status').textContent = '没有解析到 phases，请检查 schema 数据结构'; return }
       replace(structure)
     } catch (error) { byId('import-status').textContent = `导入失败：请输入合法的 schema JSON（${errorMessage(error)}）` }
   })

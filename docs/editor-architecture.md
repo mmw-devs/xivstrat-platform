@@ -12,7 +12,7 @@
 | richtext/editor | Tiptap 正文、事务与撤销历史；通过 BodyEditorHandle 暴露能力 |
 | snapshot | 按需缓存当前内容快照与校验结果 |
 | preview / proofread/reading | 从内容快照呈现不同阅读视图 |
-| preview-view / submission-view | 预览校验展示和 GitHub 提交状态展示 |
+| preview-view / submission-view / local-save | 预览校验展示、GitHub 提交状态与临时本地保存 |
 | banner-upload / image-library / game-search | 各自的资源工具界面 |
 | cos-client / asset-storage / image-utils | 外部 SDK、浏览器存储、图片处理适配 |
 | content-schema | 共享类型、业务规则、规范化、校验与内容序列化 |
@@ -40,4 +40,6 @@
 
 ## 发布入口
 
-第⑤步只提供内容预览、校验与 GitHub Submission。已移除手动下载/复制 canonical JSON、旧版纯文本 JSON、Astro/衍生文件生成及其文件列表。导入现有 JSON 和载入示例属于编辑输入，继续保留；旧数据迁移、富文本 HTML 安全转义及服务端 canonical 序列化继续由共享内容模型负责。图库中的复制图标地址是素材工具，不属于发布流程。
+第⑤步提供内容预览、校验与 GitHub Submission，并在提交按钮旁保留“保存到本地（JSON）”作为临时导出出口。它独立于提交状态和业务必填校验，直接从当前状态通过共享 structureToJson 生成规范 JSON；未完成或没有阶段的草稿也可导入恢复。已移除复制 JSON、旧版纯文本 JSON、Astro/衍生文件生成及其文件列表。导入现有 JSON 和载入示例属于编辑输入，继续保留；旧数据迁移、富文本 HTML 安全转义及服务端 canonical 序列化继续由共享内容模型负责。图库中的复制图标地址是素材工具，不属于发布流程。
+
+浏览器回归通过实际页面的组合入口，验证表单/正文编辑与排序到预览、保存和提交请求体的整条链路，以及生产提交禁用时本地保存与恢复。测试拦截 API 和外部请求，不调用真实服务。依赖检查解析 TS/TSX 导入与 Astro frontmatter/脚本中的导入（含无绑定导入）；颜色检查覆盖 CSS/SCSS 和 Astro 样式，并阻止直接引用基础色板。它们是本地回归命令，尚未接入 CI。
