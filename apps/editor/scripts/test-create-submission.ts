@@ -1,5 +1,6 @@
+import { createDemo } from '../src/lib/editor/demo.ts'
 // Manual write E2E. This creates a content/* branch, one test JSON commit, and an unmerged PR.
-import { normalizeStructure, validateStructure } from '@xivstrat/content-schema'
+import { validateStructure } from '@xivstrat/content-schema'
 
 import { createSubmission } from '../src/server/github/submission.ts'
 import { GitHubIntegrationError } from '../src/server/github/types.ts'
@@ -10,24 +11,9 @@ if (process.env.CONFIRM_GITHUB_WRITE_E2E !== WRITE_CONFIRMATION) {
   process.exit(1)
 }
 
-const structure = normalizeStructure({
-  metadata: {
-    id: 'submission-e2e-test',
-    name: 'GitHub Submission E2E Test',
-    short_name: 'E2E Test',
-    type: 'other',
-    title: 'GitHub Submission E2E Test',
-    description: 'Test-only content created by the Phase D2 GitHub App E2E.',
-    banner: 'banners/test/submission-e2e-test.webp',
-    publish_time: '2026-08-29',
-    status: 'draft',
-    video: '',
-    team: 'XivStrat Test',
-  },
-  references: [],
-  macros: [],
-  phases: [{ id: 'p1', name: 'Test Phase', mechanics: [] }],
-})
+const structure = createDemo()
+structure.metadata.name = 'submission-test'
+structure.metadata.type = 'other'
 
 const validationErrors = validateStructure(structure)
 if (validationErrors.length > 0) {

@@ -33,10 +33,9 @@ export function renderPreview(structure: StrategyStructure, target: HTMLElement,
     container.append(box)
   }
   const showMechanic = (container: HTMLElement, mechanic: StrategyMechanic): void => {
-    if (!mechanic.id && !mechanic.name) return
     const box = el('div', { class: 'preview-mechanic' })
     const name = mechanic.name || '未命名机制'
-    box.append(el('div', { class: 'sep' }, `◆ ${name}${mechanic.id ? ` #${mechanic.id}` : '（缺少 id）'}`))
+    box.append(el('div', { class: 'sep' }, `◆ ${name}`))
     mechanic.sections.forEach((section) => {
       showSection(box, section)
     })
@@ -48,7 +47,7 @@ export function renderPreview(structure: StrategyStructure, target: HTMLElement,
     container.append(box)
   }
   structure.phases.forEach((phase) => {
-    target.append(el('div', { class: 'p-title' }, `🕐 ${phase.id}${phase.name ? ` · ${phase.name}` : ''}`))
+    target.append(el('div', { class: 'p-title' }, `🕐 ${phase.name || '未命名阶段'}`))
     phase.mechanics.forEach((mechanic) => {
       showMechanic(target, mechanic)
     })
