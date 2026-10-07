@@ -1,6 +1,8 @@
+import { createDemo } from '../editor/demo.ts'
+import { plainTextDocument } from '@xivstrat/content-schema'
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { normalizeStructure } from '@xivstrat/content-schema'
+
 import { createProofreadPanel } from './panel.ts'
 
 // Only the DOM operations used by this panel: state/collection regression tests,
@@ -36,11 +38,9 @@ test('panel invalidates accepted cards after undo even if already expired; rende
     if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
     else Reflect.deleteProperty(globalThis, 'document')
   })
-  const structure = normalizeStructure({
-    phases: [
-      { mechanics: [{ sections: [{ type: 'note', content: [{ type: 'text', value: ['H 提前'] }] }] }] },
-    ],
-  })
+  const structure = createDemo()
+  structure.phases[0].mechanics[0].sections = [{ type: 'note', title: '', content: [{ type: 'text', id: 'body', doc: plainTextDocument(['H 提前']) }] }]
+
   let collections = 0
   const host = new ElementDouble()
   const panel = createProofreadPanel(

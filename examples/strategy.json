@@ -1,0 +1,113 @@
+{
+  "metadata": {
+    "name": "m1s",
+    "type": "savage",
+    "title": "示例副本攻略",
+    "banner": "banners/07/demo.webp",
+    "publish_time": "",
+    "status": "draft",
+    "video": "https://www.bilibili.com/video/BVxxxxxx/"
+  },
+  "phases": [
+    {
+      "name": "p1-前半",
+      "mechanics": [
+        {
+          "name": "示例机制",
+          "sections": [
+            {
+              "type": "mechanic",
+              "title": "机制说明",
+              "content": [
+                {
+                  "type": "text",
+                  "id": "d3a6b889-9295-49f0-8d87-69607875c928",
+                  "doc": {
+                    "type": "doc",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "处理机制时注意观察标记。"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "image",
+                  "file": "P1/demo-1.webp",
+                  "caption": "示意图"
+                }
+              ]
+            },
+            {
+              "type": "solution",
+              "title": "固定站位",
+              "content": [
+                {
+                  "type": "text",
+                  "id": "14819c63-1722-452c-8409-70b3a6dc50d2",
+                  "doc": {
+                    "type": "doc",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "被点名的人远离人群。"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "note",
+              "title": "",
+              "content": [
+                {
+                  "type": "text",
+                  "id": "c58327dd-18ea-4b34-bd36-8d37471afd22",
+                  "doc": {
+                    "type": "doc",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "这是注意事项。"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "sub_mechanics": []
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "label": "示例视频",
+      "url": "https://www.bilibili.com/video/BVxxxxxx/"
+    }
+  ],
+  "macros": [
+    {
+      "name": "示例站位",
+      "code": "/p 【机制】MT去A点\n/p {D}去B点"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { structureToJson, type StrategyStructure } from '@xivstrat/content-schema'
+import { structureToJson, stampOperation, validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
 
 import { verifyAppIdentity, verifyInstallationIdentity, verifyInstallationRepositoryAccess, verifyTargetRepository } from './app.ts'
 import { loadGitHubConfig, type GitHubConfig } from './env.ts'
@@ -13,12 +13,13 @@ import {
 } from './types.ts'
 import { safeGitHubApiDiagnostic, type InstallationOctokit } from './app.ts'
 
-const STRATEGY_ID_PATTERN = /^[a-z0-9-]+$/
+const STRATEGY_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const TARGET_DIRECTORY = 'content/strategies/'
 
 export interface SubmissionResult {
   submissionId: string
-  strategyId: string
+  strategyName: string
+  publishTime: string
   filePath: string
   branch: string
   commitSha: string
@@ -47,18 +48,18 @@ const NOT_PERFORMED_OUTCOMES: SubmissionOperationOutcomes = {
   prCreation: 'not-performed',
 }
 
-function inputError(code: 'INVALID_STRATEGY_ID' | 'UNSAFE_TARGET_PATH', message: string): GitHubIntegrationError {
+function inputError(code: 'INVALID_STRATEGY_NAME' | 'UNSAFE_TARGET_PATH', message: string): GitHubIntegrationError {
   return new GitHubIntegrationError(code, message, undefined, undefined, {
     outcomes: { ...NOT_PERFORMED_OUTCOMES },
     orphanBranchPossible: false,
   })
 }
 
-export function validateStrategyId(strategyId: string): string {
-  if (!STRATEGY_ID_PATTERN.test(strategyId)) {
-    throw inputError('INVALID_STRATEGY_ID', 'Strategy metadata.id must contain only lowercase letters, numbers, and hyphens')
+export function validateStrategyName(strategyName: string): string {
+  if (typeof strategyName !== 'string' || !STRATEGY_NAME_PATTERN.test(strategyName) || strategyName.length > 120 || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(strategyName)) {
+    throw inputError('INVALID_STRATEGY_NAME', 'Strategy metadata.name must contain only lowercase letters, numbers, and hyphens')
   }
-  return strategyId
+  return strategyName
 }
 
 export function assertSafeTargetPath(filePath: string): string {
@@ -73,8 +74,8 @@ export function assertSafeTargetPath(filePath: string): string {
   return filePath
 }
 
-export function strategyFilePath(strategyId: string): string {
-  return assertSafeTargetPath(`${TARGET_DIRECTORY}${validateStrategyId(strategyId)}.json`)
+export function strategyFilePath(strategyName: string): string {
+  return assertSafeTargetPath(`${TARGET_DIRECTORY}${validateStrategyName(strategyName)}.json`)
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -116,8 +117,11 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
   // unknown payload -> normalizeStructure(raw) -> validateStructure() -> zero errors -> createSubmission(validated).
   // Never cast an HTTP body directly to StrategyStructure and pass it here.
   return async function submit(structure: StrategyStructure): Promise<SubmissionResult> {
-    const strategyId = validateStrategyId(structure.metadata.id)
-    const filePath = strategyFilePath(strategyId)
+    structure = stampOperation(structure)
+    const errors = validateStructure(structure)
+    if (errors.length) throw inputError('INVALID_STRATEGY_NAME', errors.join('; '))
+    const strategyName = validateStrategyName(structure.metadata.name)
+    const filePath = strategyFilePath(strategyName)
     const content = Buffer.from(structureToJson(structure), 'utf8').toString('base64')
     const runtime = await runtimeFactory()
     const { config, octokit, baseHeadSha, submissionId } = runtime
@@ -170,7 +174,7 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
         repo: config.repo,
         path: filePath,
         branch,
-        message: `content: submit ${strategyId}`,
+        message: `content: submit ${strategyName}`,
         content,
         ...(existingSha ? { sha: existingSha } : {}),
       })
@@ -196,15 +200,16 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
       const pullRequest = await octokit.request('POST /repos/{owner}/{repo}/pulls', {
         owner: config.owner,
         repo: config.repo,
-        title: `content: submit ${strategyId}`,
-        body: `Strategy ID: ${strategyId}\nFile: ${filePath}\nSubmission ID: ${submissionId}`,
+        title: `content: submit ${strategyName}`,
+        body: `Strategy name: ${strategyName}\nFile: ${filePath}\nSubmission ID: ${submissionId}`,
         head: branch,
         base: config.baseBranch,
       })
       outcomes.prCreation = 'confirmed'
       return {
         submissionId,
-        strategyId,
+        strategyName,
+        publishTime: structure.metadata.publish_time,
         filePath,
         branch,
         commitSha,

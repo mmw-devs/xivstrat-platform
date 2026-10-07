@@ -1,3 +1,4 @@
+import { createDemo } from './demo.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
@@ -5,32 +6,20 @@ import { normalizeStructure } from '@xivstrat/content-schema'
 
 import { createSubmissionController, submissionCanStart, type SubmissionUiState } from './submission.ts'
 
-const structure = normalizeStructure({
-  metadata: {
-    id: 'ui-test',
-    name: 'UI Test',
-    short_name: 'Test',
-    type: 'other',
-    title: 'Submission UI Test',
-    description: 'Mock-only UI test.',
-    banner: 'banners/test.webp',
-    publish_time: '2026-09-12',
-    status: 'draft',
-    team: 'XivStrat Test',
-  },
-  phases: [{ id: 'p1', name: 'Phase 1', mechanics: [] }],
-})
+const structure = createDemo()
+structure.metadata.name = 'ui-test'
+structure.metadata.type = 'other'
 
 const updatedStructure = normalizeStructure({
   ...structure,
-  metadata: { ...structure.metadata, title: 'Latest Submission UI Test' },
+  metadata: { ...structure.metadata, title: '最新标题' },
 })
 
 const successBody = {
   ok: true,
   submission: {
     submissionId: 'submission-id',
-    strategyId: 'ui-test',
+    strategyName: 'ui-test',
     filePath: 'content/strategies/ui-test.json',
     branch: 'content/submission-id',
     commitSha: 'commit-sha',
@@ -177,9 +166,9 @@ test('fetch rejection maps to a safe network error', async () => {
   assert.deepEqual(await controller.submit(structure), {
     status: 'error',
     code: 'NETWORK_ERROR',
-    message: '网络请求失败，请检查连接后稍后再试',
+    message: '网络中断，无法确认远端结果，请先核实再提交',
     details: [],
-    retrySafe: true,
+    retrySafe: false,
   })
 })
 
@@ -195,17 +184,13 @@ for (const scenario of [
       error: { code: 'SUBMISSION_FAILED', message: 'internal' },
     }, { status: 502 }),
   },
-  {
-    name: 'network error',
-    response: () => Promise.reject(new Error('raw network failure')),
-  },
 ] as const) {
   test(`${scenario.name} clears the pending request and permits a later attempt with fresh structure`, async () => {
     const bodies: unknown[] = []
     const controller = createSubmissionController({
       fetch: async (_input, init) => {
         bodies.push(JSON.parse(String(init?.body)))
-        return await scenario.response()
+        return scenario.response()
       },
     })
 

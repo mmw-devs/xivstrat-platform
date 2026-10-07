@@ -13,7 +13,7 @@ export interface RichTextDocument {
 const BASIC_MARKS: readonly string[] = ['bold', 'italic', 'underline', 'strike']
 
 export function isSafeLinkHref(value: unknown): value is string {
-  if (typeof value !== 'string' || !value || value.length > 2000 || /[\s\u0000-\u001f\u007f]/u.test(value))
+  if (typeof value !== 'string' || !value || value.length > 2000 || /[\p{White_Space}\p{Cc}\p{Cf}]/u.test(value))
     return false
   try {
     const url = new URL(value)

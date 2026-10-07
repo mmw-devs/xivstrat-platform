@@ -1,35 +1,20 @@
+import { createDemo } from '../../lib/editor/demo.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { structureToJson, type StrategyStructure } from '@xivstrat/content-schema'
+import { structureToJson } from '@xivstrat/content-schema'
 
 import {
   assertSafeTargetPath,
   createSubmissionService,
   strategyFilePath,
-  validateStrategyId,
+  validateStrategyName,
 } from './submission.ts'
 import { GitHubIntegrationError } from './types.ts'
 
-const structure: StrategyStructure = {
-  schemaVersion: 2,
-  metadata: {
-    id: 'submission-test',
-    name: 'Submission Test',
-    short_name: 'Test',
-    type: 'other',
-    title: 'Submission Test Strategy',
-    description: 'Mock-only submission test.',
-    banner: 'banners/test.webp',
-    publish_time: '2026-08-29',
-    status: 'draft',
-    video: '',
-    team: 'XivStrat Test',
-  },
-  references: [],
-  macros: [],
-  phases: [{ id: 'p1', name: 'Phase 1', mechanics: [] }],
-}
+const structure = createDemo()
+structure.metadata.name = 'submission-test'
+structure.metadata.type = 'other'
 
 const config = {
   appId: 1,
@@ -45,13 +30,13 @@ function expectCode(action: () => unknown, code: string): void {
 }
 
 test('validates strategy ids and derives the fixed target path', () => {
-  assert.equal(validateStrategyId('submission-test'), 'submission-test')
+  assert.equal(validateStrategyName('submission-test'), 'submission-test')
   assert.equal(strategyFilePath('submission-test'), 'content/strategies/submission-test.json')
 })
 
 test('rejects traversal, slash, backslash, empty, and unsafe target paths', () => {
   for (const id of ['', '../escape', 'folder/name', 'folder\\name']) {
-    expectCode(() => validateStrategyId(id), 'INVALID_STRATEGY_ID')
+    expectCode(() => validateStrategyName(id), 'INVALID_STRATEGY_NAME')
   }
   expectCode(() => assertSafeTargetPath('content/strategies/../escape.json'), 'UNSAFE_TARGET_PATH')
   expectCode(() => assertSafeTargetPath('other/submission-test.json'), 'UNSAFE_TARGET_PATH')
@@ -104,7 +89,7 @@ test('missing file creates a new file with canonical JSON on a fresh content bra
   assert.equal(write.parameters.path, 'content/strategies/submission-test.json')
   assert.equal(write.parameters.branch, result.branch)
   assert.equal('sha' in write.parameters, false)
-  assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson(structure))
+  assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson({ ...structure, metadata: { ...structure.metadata, publish_time: result.publishTime } }))
   assert.equal(pull.parameters.base, 'main')
   assert.equal(pull.parameters.head, result.branch)
   assert.equal(result.commitSha, 'commit-sha')
@@ -117,10 +102,10 @@ test('missing file creates a new file with canonical JSON on a fresh content bra
 })
 
 test('existing file updates using its SHA and canonical JSON', async () => {
-  const { calls } = await runSubmission({ existingSha: 'existing-blob-sha' })
+  const { calls, result } = await runSubmission({ existingSha: 'existing-blob-sha' })
   const write = calls.find((call) => call.route.startsWith('PUT /repos/{owner}/{repo}/contents/{path}'))!
   assert.equal(write.parameters.sha, 'existing-blob-sha')
-  assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson(structure))
+  assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson({ ...structure, metadata: { ...structure.metadata, publish_time: result.publishTime } }))
 })
 
 test('PUT network failure reports an unknown file outcome and does not attempt a PR', async () => {
@@ -168,13 +153,13 @@ test('branch network failure is unknown and later operations are not performed',
 
 test('input validation failure marks every remote operation as not performed', async () => {
   const invalid = structuredClone(structure)
-  invalid.metadata.id = '../escape'
+  invalid.metadata.name = '../escape'
   const submit = createSubmissionService(async () => {
     throw new Error('runtime must not be created for invalid input')
   })
   await assert.rejects(submit(invalid), (error) => {
     assert.ok(error instanceof GitHubIntegrationError)
-    assert.equal(error.code, 'INVALID_STRATEGY_ID')
+    assert.equal(error.code, 'INVALID_STRATEGY_NAME')
     assert.deepEqual(error.submissionContext?.outcomes, {
       branchCreation: 'not-performed',
       fileWrite: 'not-performed',
