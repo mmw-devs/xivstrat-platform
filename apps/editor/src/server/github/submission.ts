@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { hasManagedImages } from '../../lib/editor/image-references.ts'
 
 import { structureToJson, stampOperation, validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
 
@@ -120,6 +121,7 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
     structure = stampOperation(structure)
     const errors = validateStructure(structure)
     if (errors.length) throw inputError('INVALID_STRATEGY_NAME', errors.join('; '))
+    if (hasManagedImages(structure)) throw inputError('UNSAFE_TARGET_PATH', '图片投稿尚未接入，请勿只提交本地图片路径')
     const strategyName = validateStrategyName(structure.metadata.name)
     const filePath = strategyFilePath(strategyName)
     const content = Buffer.from(structureToJson(structure), 'utf8').toString('base64')

@@ -10,6 +10,9 @@ import { mountLocalSave } from '../lib/editor/local-save'
 import { createProofreadPanel, type ProofreadPanel } from '../lib/proofread/panel'
 import { renderReading, type ReadingHighlight } from '../lib/proofread/reading'
 import type { StrategyStructure } from '@xivstrat/content-schema'
+import { createImageAssets } from '../lib/editor/image-assets'
+import { createImagePicker } from '../lib/editor/image-picker'
+import { mountImagePackage } from '../lib/editor/image-package-view'
 
 const instances = new WeakMap<HTMLElement, { destroy(): void }>()
 
@@ -25,6 +28,7 @@ export function initEditor(root: HTMLElement) {
   let queued = false
   let historyChanged = false
   let panel: ProofreadPanel | undefined
+  const assets = createImageAssets()
 
   const changed = (history = false): void => {
     if (disposed) return
@@ -42,8 +46,14 @@ export function initEditor(root: HTMLElement) {
     })
   }
   const metadata = createMetadata(byId, changed, signal)
+  const bannerInput = byId<HTMLInputElement>('inp-banner')
+  const bannerPicker = createImagePicker(assets, bannerInput.value, path => {
+    bannerInput.value = path; bannerInput.dispatchEvent(new Event('input'))
+  })
+  bannerInput.insertAdjacentElement('afterend', bannerPicker.root)
+  bannerInput.addEventListener('input', () => bannerPicker.show(bannerInput.value), { signal })
   const authoring = createAuthoring({
-    references: byId('refs'), macros: byId('macros'), phases: byId('phases'), changed,
+    references: byId('refs'), macros: byId('macros'), phases: byId('phases'), changed, assets,
   })
   const collect = (): StrategyStructure => ({ metadata: metadata.read(), ...authoring.read() })
   const cache = createSnapshotCache(collect)
@@ -65,15 +75,17 @@ export function initEditor(root: HTMLElement) {
     panel?.changed(true)
     const resetStatus = structure.metadata.status !== 'draft'
     metadata.replace(structure.metadata)
+    bannerPicker.show(structure.metadata.banner)
     authoring.replace(structure)
     goStep(5)
     byId('import-status').textContent = `导入成功！共 ${structure.phases.length} 个阶段。${resetStatus ? '原状态已转为 draft，作为草稿编辑。' : ''}`
   }
-  const preview = mountPreview(byId, cache.get, () => replace(createDemo()), signal)
+  const preview = mountPreview(byId, cache.get, () => replace(createDemo()), signal, assets.resolve)
   panel = createProofreadPanel(byId('proofread'), collect, authoring.findBody,
     (blockId, paragraph, from, to) => reading({ blockId, paragraph, from, to }))
   mountSubmission(byId, collect, signal, metadata.setOperationTime)
   mountLocalSave(byId, collect, signal, metadata.setOperationTime)
+  mountImagePackage(byId, collect, replace, assets, signal)
 
   root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(button => button.addEventListener('click', () => goStep(Number(button.dataset.step)), { signal }))
   const on = (id: string, action: () => void): void => byId(id).addEventListener('click', action, { signal })
@@ -98,6 +110,9 @@ export function initEditor(root: HTMLElement) {
       events.abort()
       panel?.destroy()
       authoring.destroy()
+      bannerPicker.destroy()
+      bannerPicker.root.remove()
+      assets.clear()
       instances.delete(root)
     }
   }

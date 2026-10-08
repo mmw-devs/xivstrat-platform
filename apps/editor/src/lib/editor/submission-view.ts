@@ -1,6 +1,7 @@
 import { createSubmissionController, submissionCanStart, type SubmissionController, type SubmissionUiState } from './submission'
 import { el, type ElementLookup } from '../ui/dom'
 import { validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
+import { hasManagedImages } from './image-references'
 export function mountSubmission(byId: ElementLookup, getStructure: () => StrategyStructure, signal: AbortSignal, onSubmitted?: (time: string) => void): void {
   let submissionController: SubmissionController | undefined
   function renderSubmissionState(state: SubmissionUiState): void {
@@ -53,6 +54,7 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
     if (!submissionController) return
     const structure = getStructure()
     const errors = validateStructure(structure)
+    if (hasManagedImages(structure)) errors.push('图片投稿尚未接入，当前图片仅在本地；请保留原图，暂不能提交审核。')
     if (errors.length) { renderSubmissionState({ status: 'error', code: 'INVALID_SUBMISSION', message: '内容未通过校验', details: errors, retrySafe: true }); return }
     void submissionController.submit(structure)
   }

@@ -17,7 +17,7 @@ export function mountLocalSave(byId: ElementLookup, collect: () => StrategyStruc
       try {
         anchor.click()
         onSaved?.(structure.metadata.publish_time)
-        status.textContent = '已发起 JSON 下载，请确认文件已保存；后续修改需要再次保存。'
+        status.textContent = '已发起 JSON 下载，请确认文件已保存；JSON 不包含图片文件，请保留原图；后续修改需要再次保存。'
       } finally {
         anchor.remove()
         // Let the browser consume the object URL before releasing it.

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createEmptyStructure, normalizeStructure, plainTextDocument, type StrategyStructure } from '@xivstrat/content-schema'
 import { importStructure, isolateNetwork, saveLocal } from './helpers'
+import { zipSync, strToU8 } from 'fflate'
 
 const metadata = {
   ...createEmptyStructure().metadata, name: 'browser-test', type: 'other' as const,
@@ -9,6 +10,52 @@ const metadata = {
 const fields = { name: 'inp-name', title: 'inp-title', banner: 'inp-banner' } as const
 
 test.beforeEach(async ({ page }) => { await isolateNetwork(page); await page.goto('/editor/') })
+
+test('local images survive ZIP backup and fresh-page import without uploading', async ({ page }, testInfo) => {
+  let uploads = 0
+  await page.route('**/api/submissions', route => { uploads++; return route.abort() })
+  const fixture = normalizeStructure({ ...createEmptyStructure(), metadata: { ...metadata, banner: '' }, phases: [{ name: 'p1', mechanics: [{
+    name: '图片机制', sub_mechanics: [], sections: [{ type: 'note', title: '', content: [{ type: 'image', file: '', caption: '站位图' }] }],
+  }] }] })
+  await importStructure(page, fixture)
+  await page.locator('[data-step="3"]').click()
+  const bytes = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 240
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#ffffff'; context.fillRect(0, 0, 480, 240)
+    context.fillStyle = '#111111'; context.font = '24px sans-serif'; context.fillText('站位 A → B', 30, 100)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await page.locator('#phases input[type="file"]').setInputFiles({ name: 'diagram.png', mimeType: 'image/png', buffer: Buffer.from(bytes, 'base64') })
+  await expect(page.locator('#phases [role="status"]')).toContainText('尚未上传')
+  await page.locator('[data-step="5"]').click()
+  await expect(page.locator('#preview img')).toBeVisible()
+  expect(await page.locator('#preview img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(480)
+  await page.getByRole('button', { name: '提交审核', exact: true }).click()
+  await expect(page.locator('#submission-status')).toContainText('图片投稿尚未接入')
+  expect(uploads).toBe(0)
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: '下载攻略包（ZIP）' }).click()
+  const downloaded = await downloading
+  const path = await downloaded.path()
+  await page.reload()
+  await page.locator('[data-step="5"]').click()
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByLabel('导入攻略包 ZIP', { exact: true }).setInputFiles(path!)
+  await expect(page.getByText('攻略包导入成功，图片已恢复到当前页面。')).toBeVisible()
+  await expect(page.locator('#preview img')).toBeVisible()
+  expect(await page.locator('#preview img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(480)
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByLabel('导入攻略包 ZIP', { exact: true }).setInputFiles({
+    name: 'unsafe.zip', mimeType: 'application/zip', buffer: Buffer.from(zipSync({ '../outside.webp': strToU8('invalid') })),
+  })
+  await expect(page.getByText('导入失败：攻略包包含不允许的路径')).toBeVisible()
+  await expect(page.locator('#preview img')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('image-package.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('#preview img')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('image-package-mobile.png'), fullPage: true })
+})
 
 async function mockSubmission(page: import('@playwright/test').Page) {
   const requests: StrategyStructure[] = []
