@@ -7,6 +7,8 @@ import { createBodyEditor, type BodyEditorHandle } from '../richtext/editor'
 import { el, button } from '../ui/dom'
 import { createOrderedList } from './ordered-list'
 import { SECTION_PRESENTATION, sectionTitleLabel } from './presentation'
+import { createImagePicker } from './image-picker'
+import type { ImageAssets } from './image-assets'
 
 interface Item<T> { root: HTMLElement; read(): T; destroy(): void }
 interface Actions { remove(): void; move(direction: -1 | 1): void }
@@ -65,6 +67,7 @@ function field(label: string, value: string, update: (value: string) => void, op
 }
 
 interface AuthoringOptions {
+  assets: ImageAssets
   references: HTMLElement
   macros: HTMLElement
   phases: HTMLElement
@@ -84,10 +87,15 @@ export function createAuthoring(options: AuthoringOptions) {
       button('↑', () => actions.move(-1)), button('↓', () => actions.move(1)), button('删除', actions.remove, 'danger')))
     if (image) {
       let file = value.file, caption = value.caption
+      const pathField = field('图片路径或链接', file, next => { file = next; picker.show(next); changed() }, { required: true, placeholder: '选择本地图片或输入图片链接' })
+      const picker = createImagePicker(options.assets, file, next => {
+        file = next; pathField.querySelector('input')!.value = next; changed()
+      })
       root.append(el('div', { class: 'row' },
-        field('图片链接', file, next => { file = next; changed() }, { required: true, placeholder: '输入图片链接' }),
+        pathField,
         field('图片说明（可选）', caption, next => { caption = next; changed() }, { placeholder: '图片说明' })))
-      return { root, read: () => ({ type: 'image', file: file, caption: caption }), destroy() { } }
+      root.append(picker.root)
+      return { root, read: () => ({ type: 'image', file: file, caption: caption }), destroy: picker.destroy }
     }
     const id = value?.type === 'text' ? value.id : crypto.randomUUID()
     const host = el('div', { class: 'content-value' })

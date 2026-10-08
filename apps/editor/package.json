@@ -38,6 +38,7 @@
     "@tiptap/react": "3.31.3",
     "@xivstrat/content-schema": "workspace:*",
     "astro": "6.1.5",
+    "fflate": "^0.8.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

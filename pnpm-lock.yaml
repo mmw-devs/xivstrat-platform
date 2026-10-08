@@ -64,6 +64,9 @@ importers:
       astro:
         specifier: 6.1.5
         version: 6.1.5(@types/node@24.13.3)(rollup@4.63.1)(sass@1.104.0)(typescript@6.0.2)(yaml@2.9.0)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -1531,6 +1534,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   flattie@1.1.1:
     resolution: {integrity: sha512-9UbaD6XdAL97+k/n+N7JwX46K/M6Zc6KcFYskrYL8wbBV/Uyk0CTAMY0VT+qiK5PM7AIc9aTWYtq65U7T+aCNQ==}
@@ -3925,6 +3931,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.3: {}
 
   flattie@1.1.1: {}
 
