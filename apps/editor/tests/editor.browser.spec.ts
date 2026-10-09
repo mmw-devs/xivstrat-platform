@@ -31,8 +31,6 @@ test('local images survive ZIP backup and fresh-page import without uploading', 
   await page.locator('[data-step="5"]').click()
   await expect(page.locator('#preview img')).toBeVisible()
   expect(await page.locator('#preview img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(480)
-  await page.getByRole('button', { name: '提交审核', exact: true }).click()
-  await expect(page.locator('#submission-status')).toContainText('图片投稿尚未接入')
   expect(uploads).toBe(0)
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: '下载攻略包（ZIP）' }).click()

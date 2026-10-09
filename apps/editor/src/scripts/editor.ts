@@ -83,7 +83,7 @@ export function initEditor(root: HTMLElement) {
   const preview = mountPreview(byId, cache.get, () => replace(createDemo()), signal, assets.resolve)
   panel = createProofreadPanel(byId('proofread'), collect, authoring.findBody,
     (blockId, paragraph, from, to) => reading({ blockId, paragraph, from, to }))
-  mountSubmission(byId, collect, signal, metadata.setOperationTime)
+  mountSubmission(byId, collect, signal, metadata.setOperationTime, assets)
   mountLocalSave(byId, collect, signal, metadata.setOperationTime)
   mountImagePackage(byId, collect, replace, assets, signal)
 
