@@ -1,6 +1,6 @@
 # 受控图片中转服务
 
-目的：接收一份完整、不可变的图文投稿快照，短暂保存到磁盘，供后续 GitHub 多文件投稿使用。当前实现仅接收和校验，不调用 GitHub，不提供图片公开访问，也不保存长期用户图库。
+目的：接收一份完整、不可变的图文投稿快照，短暂保存到磁盘，再由显式启动的后台任务将 JSON 和图片写入同一个 GitHub commit / PR。不提供图片公开访问，不保存长期用户图库。默认仅启用接收，远程投稿需另行开启。
 
 ## 本地启动
 
@@ -11,7 +11,7 @@ pnpm.cmd --dir apps/editor upload:dev
 pnpm.cmd --dir apps/editor upload:test
 ```
 
-服务仅监听 `127.0.0.1:4324`，Astro 开发环境代理 `/api/upload-tasks`。本地适配器只允许回环连接，拒绝非白名单 Origin 和跨站浏览器请求，固定身份为 `local-developer`。不需要 GitHub 凭证。
+服务仅监听 `127.0.0.1:4324`，Astro 开发环境代理 `/api/upload-tasks`。本地适配器只允许回环连接，拒绝非白名单 Origin 和跨站浏览器请求，固定身份为 `local-developer`。仅接收不需要 GitHub 凭证。服务会加载仓库根目录 `.env`；只有 `ENABLE_IMAGE_SUBMISSION=1` 时启用后端投稿入口，使用现有 GitHub App 配置。这一开关不自动启动任何投稿。
 
 这不是生产鉴权。通用处理器要求注入 `authenticate(request)`，由可信服务端产生身份；请求体和客户端 owner 字段不能指定身份。当前不能将该本地适配器直接公开部署。飞书身份接入不在本阶段任务范围。
 
@@ -85,4 +85,31 @@ SQLite 保存任务摘要、身份、状态、空间账目和文件清单。使�
 
 本地测试使用真实 HTTP multipart、临时 SQLite 和 sharp，覆盖正常上传、重复请求、归属隔离、全局／单身份并发、容量、文件缺失、非法路径、哈希不符、实际内容超限、无 Content-Length 超限、客户端断开、接收超时、重启恢复及独占锁。测试不调用 GitHub。
 
-下一阶段实现 GitHub blobs / tree / commit / branch / PR 和远程结果查证，再接前端进度查询。成功投稿后的即时清理将与确认远程文件完整的步骤一起实现；在此之前 ready 素材按一小时上限清理。
+后端多文件 GitHub 工作流已实现并经过模拟测试，尚未进行真实远程图片投稿。下一阶段接前端上传、启动与进度查询，再进行受控端到端验证。
+
+## 图文 GitHub 投稿与恢复
+
+`POST /api/upload-tasks/<id>/submit`：需要显式开启 `ENABLE_IMAGE_SUBMISSION=1`，未开启返回 503。开启后，这个接口可能真实创建 GitHub 分支、提交和 PR。它不接受新 JSON，只处理已接收的固定任务；检查任务归属后返回 202，后台执行。全局同时处理一个投稿，重复启动同一任务复用正在运行的工作，其他任务返回 429。
+
+继续使用 `GET /api/upload-tasks/<id>` 查询；GET 不触发任何 GitHub 操作。`remoteSubmission` 可以是：
+
+| 状态 | 含义 |
+| --- | --- |
+| not-started | 尚未启动 |
+| running | 后台正在执行 |
+| retryable | 尚未进入不确定的分支／PR 写入，可再次显式启动；若 code=REUPLOAD_REQUIRED，先上传原快照 |
+| unknown | 进程中断或可变远程写入结果未知；再次启动先查证，查不到也不重复创建 |
+| needs-attention | 目标仓库、分支、内容或 PR 与记录不一致，需要维护者处理 |
+| submitted | 已确认对应 PR 及远程文件；result 包含 prNumber、prUrl 和 commitSha，不代表已合并或已发布 |
+
+首次运行把投稿时间、目标仓库、基准 commit/tree、文件清单持久保存到 SQLite `submissions` 表。原始上传 JSON 不变，上传到 GitHub 的 JSON 使用固定的服务端操作时间。后续运行不切换到更新的 main 或新配置的仓库。
+
+流程为 blobs → 基于 base_tree 的完整 tree → 单个 commit → 投稿分支 → PR。先查询 commit 并核对父节点、tree 和全部文件 SHA，再暴露分支。每个远程步骤结束后立即保存检查点。Blob/tree/commit 是不可变对象；恢复时只补未确认的对象，commit 的作者、提交者、时间和父节点固定。
+
+创建分支或 PR 前先保存“已尝试”标记。超时后重新启动会查精确分支和所有状态的 PR（含已关闭的 PR，分页查询）。查到且内容一致才继续；查不到保持 unknown，不自动再次 POST。分支被他人修改、多个候选 PR 或 PR 内容不符会停止，不 force push、不删除远程对象。PR 已关闭且分支已删除时仍可识别原 PR，不新建。
+
+确认完成后先持久保存结果，再清理临时文件。清理失败保留空间账目并标记 LOCAL_CLEANUP_PENDING，定时任务会继续尝试。运行中的任务有内存保护，不会被一小时清理任务删除；进程重启将遗留 running 标记为 unknown，不自动执行远程操作。等待查证的素材仍可到期清理，但投稿检查点保留；若 commit 已确认可直接查远端，无需重新上传。
+
+有投稿检查点的记录不适用七天自动删除，仍受 10000 条任务总上限约束；达到上限需由维护者处理，不能自动遗忘旧投稿编号后再次创建 PR。该阶段尚未提供管理界面或“强制重试未知写入”的接口。
+
+模拟验证：`pnpm.cmd --dir apps/editor images:submission:test`，覆盖每个写入步骤的响应丢失、重启、原快照/时间保持、关闭 PR 与删除分支、内容冲突、归属隔离及 POST/GET 接口；测试不访问 GitHub。

@@ -104,7 +104,7 @@ function failedWriteOutcome(error: unknown): OperationOutcome {
   return status && status >= 400 && status < 500 ? 'not-performed' : 'unknown'
 }
 
-async function productionRuntime(): Promise<SubmissionRuntime> {
+export async function productionRuntime(): Promise<SubmissionRuntime> {
   const config = loadGitHubConfig()
   const { app } = await verifyAppIdentity(config)
   await verifyInstallationIdentity(app, config)
