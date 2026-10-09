@@ -6,6 +6,7 @@ export default defineConfig({
       proxy: {
         '/api/proofread': 'http://127.0.0.1:4322',
         '/api/submissions': 'http://127.0.0.1:4323',
+        '/api/upload-tasks': 'http://127.0.0.1:4324',
       },
     },
   },
