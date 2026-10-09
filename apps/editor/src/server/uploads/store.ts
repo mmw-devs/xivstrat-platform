@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync, rmSync, statSync, readdirSync } from 'node:fs'
 import { resolve, join } from 'node:path'
+import type { SubmissionCheckpoint } from './submission-state.ts'
 
 export const MIB = 1024 * 1024
 export const TASK_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
@@ -13,7 +14,7 @@ export interface UploadTask {
   id: string
   owner: string
   digest: string
-  state: 'receiving' | 'ready' | 'reupload-required'
+  state: 'receiving' | 'ready' | 'reupload-required' | 'submitted'
   bytes: number
   updated: number
   files: string
@@ -37,6 +38,7 @@ export class UploadStore {
   private maxTasks: number
   private ttlMs: number
   readonly spool: string
+  private active = new Set<string>()
 
   constructor(directory: string, options: StoreOptions = {}) {
     const root = resolve(directory)
@@ -60,7 +62,13 @@ export class UploadStore {
         id TEXT PRIMARY KEY, owner TEXT NOT NULL, digest TEXT NOT NULL,
         state TEXT NOT NULL, bytes INTEGER NOT NULL, updated INTEGER NOT NULL, files TEXT NOT NULL
       )`)
+      this.db.exec('CREATE TABLE IF NOT EXISTS submissions (id TEXT PRIMARY KEY, checkpoint TEXT NOT NULL)')
       for (const task of this.all()) {
+        const job = this.submission(task.id, task.owner)
+        if (job?.status === 'running') this.saveSubmission(task.id, task.owner, { ...job, status: 'unknown', code: 'PROCESS_INTERRUPTED' })
+      }
+      for (const task of this.all()) {
+        if (task.state === 'submitted') { this.release(task.id); continue }
         if (task.state === 'receiving' || task.state === 'reupload-required') this.release(task.id)
         else {
           try {
@@ -92,7 +100,8 @@ export class UploadStore {
     const old = this.db.prepare('SELECT * FROM tasks WHERE id=?').get(id) as UploadTask | undefined
     if (old && old.owner !== owner) throw new UploadError(404, 'NOT_FOUND', '任务不存在')
     if (old && old.digest !== digest) throw new UploadError(409, 'SNAPSHOT_CHANGED', '同一任务编号不能更换内容')
-    if (old?.state === 'ready') return { task: old, reused: true }
+    if (old?.state === 'ready' || old?.state === 'submitted') return { task: old, reused: true }
+    if (this.active.has(id)) throw new UploadError(409, 'SUBMISSION_BUSY', '任务正在投稿，暂不能重传素材')
     if (old?.state === 'receiving') throw new UploadError(409, 'UPLOAD_IN_PROGRESS', '该任务正在接收')
     const tasks = this.all()
     const receiving = tasks.filter(task => task.state === 'receiving')
@@ -118,14 +127,34 @@ export class UploadStore {
   release(id: string): void {
     // Never release accounting before removal succeeds; disk errors fail closed.
     rmSync(this.directory(id), { recursive: true, force: true })
-    this.db.prepare("UPDATE tasks SET state='reupload-required', bytes=0, files='[]' WHERE id=?").run(id)
+    this.db.prepare("UPDATE tasks SET state=CASE WHEN state='submitted' THEN 'submitted' ELSE 'reupload-required' END, bytes=0, files='[]' WHERE id=?").run(id)
   }
   cleanup(): void {
     for (const task of this.all()) {
       // Live receivers own their deadline; cleanup must not remove their open files.
-      if (task.state !== 'receiving' && task.bytes > 0 && task.updated + this.ttlMs <= this.now()) this.release(task.id)
+      if (!this.active.has(task.id) && task.state !== 'receiving' && task.bytes > 0 && (task.state === 'submitted' || task.updated + this.ttlMs <= this.now())) this.release(task.id)
     }
-    this.db.prepare("DELETE FROM tasks WHERE state='reupload-required' AND bytes=0 AND updated < ?").run(this.now() - 7 * 24 * 60 * 60 * 1000)
+    this.db.prepare("DELETE FROM tasks WHERE state='reupload-required' AND bytes=0 AND updated < ? AND id NOT IN (SELECT id FROM submissions)").run(this.now() - 7 * 24 * 60 * 60 * 1000)
+  }
+  submission(id: string, owner: string): SubmissionCheckpoint | undefined {
+    if (!this.get(id, owner)) return undefined
+    const row = this.db.prepare('SELECT checkpoint FROM submissions WHERE id=?').get(id) as { checkpoint: string } | undefined
+    return row ? JSON.parse(row.checkpoint) as SubmissionCheckpoint : undefined
+  }
+  saveSubmission(id: string, owner: string, checkpoint: SubmissionCheckpoint): void {
+    if (!this.get(id, owner)) throw new UploadError(404, 'NOT_FOUND', '任务不存在')
+    this.db.exec('BEGIN')
+    try {
+      this.db.prepare('INSERT INTO submissions VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET checkpoint=excluded.checkpoint').run(id, JSON.stringify(checkpoint))
+      if (checkpoint.status === 'submitted') this.db.prepare("UPDATE tasks SET state='submitted' WHERE id=?").run(id)
+      this.db.exec('COMMIT')
+    } catch (error) { this.db.exec('ROLLBACK'); throw error }
+  }
+  pin(id: string, owner: string): () => void {
+    if (!this.get(id, owner)) throw new UploadError(404, 'NOT_FOUND', '任务不存在')
+    if (this.active.size) throw new UploadError(429, 'SUBMISSION_BUSY', '已有投稿正在处理')
+    this.active.add(id)
+    return () => { this.active.delete(id) }
   }
   close(): void { this.db.close() }
 }
