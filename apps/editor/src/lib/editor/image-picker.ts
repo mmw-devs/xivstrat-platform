@@ -5,7 +5,7 @@ export function createImagePicker(assets: ImageAssets, initial: string, update: 
   let revision = 0
   let destroyed = false
   const input = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', 'aria-label': '选择本地图片' })
-  const status = el('p', { class: 'hint', role: 'status' }, '图片仅留在当前页面，关闭前请下载攻略包；尚不支持图片投稿。转换使用高质量有损 WebP，请放大检查文字。')
+  const status = el('p', { class: 'hint', role: 'status' }, '图片仅留在当前页面，提交审核时才上传；关闭前请下载攻略包。转换使用高质量有损 WebP，请放大检查文字。')
   const preview = el('img', { alt: '所选图片预览', style: 'max-width:100%;max-height:320px;object-fit:contain', hidden: true })
   const link = el('a', { target: '_blank', rel: 'noopener noreferrer', 'aria-label': '放大查看图片' }, preview)
   const show = (path: string) => {

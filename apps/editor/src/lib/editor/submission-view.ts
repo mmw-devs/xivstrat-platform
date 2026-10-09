@@ -2,8 +2,11 @@ import { createSubmissionController, submissionCanStart, type SubmissionControll
 import { el, type ElementLookup } from '../ui/dom'
 import { validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
 import { hasManagedImages } from './image-references'
-export function mountSubmission(byId: ElementLookup, getStructure: () => StrategyStructure, signal: AbortSignal, onSubmitted?: (time: string) => void): void {
+import { mountImageSubmission } from './image-submission-view'
+import type { ImageAssets } from './image-assets'
+export function mountSubmission(byId: ElementLookup, getStructure: () => StrategyStructure, signal: AbortSignal, onSubmitted?: (time: string) => void, assets?: ImageAssets): void {
   let submissionController: SubmissionController | undefined
+  let images: ReturnType<typeof mountImageSubmission> | undefined
   function renderSubmissionState(state: SubmissionUiState): void {
     const button = byId<HTMLButtonElement>('btn-submit-review')
     const status = byId<HTMLElement>('submission-status')
@@ -51,11 +54,20 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
   }
 
   function submitForReview(): void {
-    if (!submissionController) return
+    if (!submissionController || images?.isBusy() || !submissionCanStart(submissionController.getState())) return
     const structure = getStructure()
     const errors = validateStructure(structure)
-    if (hasManagedImages(structure)) errors.push('图片投稿尚未接入，当前图片仅在本地；请保留原图，暂不能提交审核。')
     if (errors.length) { renderSubmissionState({ status: 'error', code: 'INVALID_SUBMISSION', message: '内容未通过校验', details: errors, retrySafe: true }); return }
+    if (hasManagedImages(structure) && images) {
+      byId('submission-status').textContent = ''
+      void images.submit()
+      return
+    }
+    if (images?.hasPending()) {
+      byId('submission-status').textContent = '上一图片任务尚未结束，请先查询或继续该任务。'
+      return
+    }
+    if (hasManagedImages(structure)) return
     void submissionController.submit(structure)
   }
 
@@ -70,6 +82,12 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
       onStateChange: renderSubmissionState,
     })
     renderSubmissionState(submissionController.getState())
+    if (assets) images = mountImageSubmission(byId('submission-status'), assets, getStructure, signal, busy => {
+      const button = byId<HTMLButtonElement>('btn-submit-review')
+      button.disabled = busy || !submissionCanStart(submissionController!.getState())
+      button.textContent = busy ? '正在处理图片任务…' : '提交审核'
+      button.setAttribute('aria-busy', String(busy))
+    })
   }
 
 

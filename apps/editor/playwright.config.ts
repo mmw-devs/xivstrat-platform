@@ -8,7 +8,7 @@ export default defineConfig({
   fullyParallel: false,
   use: { channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge', trace: 'retain-on-failure' },
   projects: [
-    { name: 'development', testMatch: 'editor.browser.spec.ts', use: { baseURL: 'http://127.0.0.1:4331' } },
+    { name: 'development', testMatch: ['editor.browser.spec.ts', 'image-submission.browser.spec.ts'], use: { baseURL: 'http://127.0.0.1:4331' } },
     { name: 'production', testMatch: 'local-save.production.spec.ts', use: { baseURL: 'http://127.0.0.1:4332' } },
   ],
   webServer: [

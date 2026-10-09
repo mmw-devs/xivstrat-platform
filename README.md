@@ -54,7 +54,7 @@ pnpm.cmd --dir apps/editor submission:dev
 
 ## 设计与代码架构
 
-本地图片的受控上传服务可独立启动：`pnpm.cmd --dir apps/editor upload:dev`，监听 `127.0.0.1:4324`。默认只暂存并校验素材；显式设置 `ENABLE_IMAGE_SUBMISSION=1` 后，POST 任务的 `/submit` 接口才可真实创建 GitHub 图文 PR。前端图片投稿仍未开放。容量、任务查询和恢复规则见 [受控图片中转服务](docs/image-upload-service.md)。模拟测试命令：`pnpm.cmd --dir apps/editor images:submission:test`。
+本地图片的受控上传服务可独立启动：`pnpm.cmd --dir apps/editor upload:dev`，监听 `127.0.0.1:4324`。开发页面已接通上传、投稿及任务查询；默认只暂存并校验素材，显式设置 `ENABLE_IMAGE_SUBMISSION=1` 后才可真实创建 GitHub 图文 PR。生产页面仍禁用投稿。刷新后可查询同一标签页的任务，图片需自行下载 ZIP 备份。容量、任务查询和恢复规则见 [受控图片中转服务](docs/image-upload-service.md)。模拟测试命令：`pnpm.cmd --dir apps/editor images:submission:test`。
 
 界面颜色按主题色、功能色、标准色和内容区块角色分层；间距、字体、字号、字重、行高、圆角、阴影等由 `tokens.css` 集中定义。正文允许持久化的颜色与字号由共享内容模型管理。
 
