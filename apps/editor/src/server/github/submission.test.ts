@@ -25,6 +25,15 @@ const config = {
   baseBranch: 'main',
 }
 
+test('managed image references cannot create a JSON-only GitHub submission', async () => {
+  let contacted = false
+  const submit = createSubmissionService(async () => { contacted = true; throw new Error('must not reach GitHub') })
+  const imageDraft = structuredClone(structure)
+  imageDraft.metadata.banner = `assets/images/${'a'.repeat(64)}.webp`
+  await assert.rejects(submit(imageDraft), (error: unknown) => error instanceof GitHubIntegrationError && error.code === 'UNSAFE_TARGET_PATH')
+  assert.equal(contacted, false)
+})
+
 function expectCode(action: () => unknown, code: string): void {
   assert.throws(action, (error) => error instanceof GitHubIntegrationError && error.code === code)
 }

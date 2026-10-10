@@ -12,7 +12,7 @@ export async function isolateNetwork(page: Page): Promise<void> {
 
 export async function saveLocal(page: Page): Promise<StrategyStructure> {
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: '保存到本地（JSON）', exact: true }).click()
+  await page.getByRole('button', { name: '仅保存文本（JSON）', exact: true }).click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/^[a-z0-9-]+\.json$/i)
   const file = await download.path()
@@ -21,8 +21,8 @@ export async function saveLocal(page: Page): Promise<StrategyStructure> {
 }
 
 export async function importStructure(page: Page, structure: StrategyStructure): Promise<void> {
-  await page.locator('[data-step="5"]').click()
-  await page.locator('#importArea').fill(JSON.stringify(structure))
-  await page.getByRole('button', { name: '导入已有攻略', exact: true }).click()
+  await page.getByRole('button', { name: '导入现有攻略', exact: true }).click()
+  await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'strategy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(structure)) })
+  await page.getByRole('button', { name: '确认导入', exact: true }).click()
   await expect(page.locator('#import-status')).toContainText('导入成功')
 }
