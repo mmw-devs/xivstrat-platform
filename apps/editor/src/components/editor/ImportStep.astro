@@ -1,0 +1,13 @@
+<section class="panel" id="step6" aria-labelledby="import-title">
+  <h2 class="sec" id="import-title">导入现有攻略</h2>
+  <p class="import-warning">确认导入后会校验文件，校验成功将覆盖当前正在编辑的攻略。请先保存本地备份；导入失败不会替换当前内容。</p>
+  <section class="card stack">
+    <p class="hint">支持 JSON 文本文件和 ZIP 图片+文本攻略包，自动按文件类型导入。JSON 不包含图片文件，ZIP 可恢复本地图片。</p>
+    <input id="import-file" type="file" accept=".json,.zip,application/json,application/zip" aria-label="导入攻略文件" hidden />
+    <div class="actions">
+      <button id="btn-choose-import" type="button" class="btn">选择文件</button>
+      <button id="btn-confirm-import" type="button" class="btn primary" disabled>确认导入</button>
+    </div>
+    <p id="import-filename" class="hint import-filename" role="status">未选择文件</p>
+  </section>
+</section>

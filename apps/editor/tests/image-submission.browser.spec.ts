@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { test, expect, type Page } from '@playwright/test'
 import { createEmptyStructure, normalizeStructure } from '@xivstrat/content-schema'
 import { createServer } from 'node:http'
@@ -146,7 +147,7 @@ test('expired upload restores from ZIP under the same receipt, despite export op
     await route.fulfill({ json: { ok: true, task: { id, state: 'ready', remoteSubmission: 'not-started' } } })
   })
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: '下载攻略包（ZIP）' }).click()
+  await page.getByRole('button', { name: '保存图片+文本（ZIP）' }).click()
   const path = await (await download).path()
   await page.getByRole('button', { name: '提交审核', exact: true }).click()
   await expect(page.locator('#image-submission-status')).toContainText('图片远程投稿未启用')
@@ -155,8 +156,9 @@ test('expired upload restores from ZIP under the same receipt, despite export op
   await page.getByRole('button', { name: '继续图片任务', exact: true }).click()
   await expect(page.locator('#image-submission-status')).toContainText('请先查询原任务')
   expect(putCount).toBe(1)
-  page.once('dialog', dialog => dialog.accept())
-  await page.getByLabel('导入攻略包 ZIP', { exact: true }).setInputFiles(path!)
+  await page.locator('[data-step="6"]').click()
+  await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'strategy-package.zip', mimeType: 'application/zip', buffer: await readFile(path!) })
+  await page.getByRole('button', { name: '确认导入', exact: true }).click()
   await expect(page.getByText('攻略包导入成功，图片已恢复到当前页面。')).toBeVisible()
   await page.getByRole('button', { name: '继续图片任务', exact: true }).click()
   await expect(page.locator('#image-submission-status')).toContainText('图片远程投稿未启用')

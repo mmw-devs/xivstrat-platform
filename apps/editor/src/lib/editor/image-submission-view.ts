@@ -26,6 +26,7 @@ export function mountImageSubmission(host: HTMLElement, assets: ImageAssets, get
   } catch { /* Storage is checked again before any write request. */ }
 
   function render(text: string) {
+    root.hidden = false
     message.textContent = text
     identity.textContent = receipt ? `图片任务：${receipt.id}` : ''
     query.hidden = resume.hidden = !receipt
@@ -150,6 +151,7 @@ export function mountImageSubmission(host: HTMLElement, assets: ImageAssets, get
     await advance(task)
   }) }, { signal })
   render(receipt ? '发现之前的图片任务，可查询结果或继续原任务。图片本身没有保存在会话存储中。' : '图片随本次快照提交；请先下载攻略包备份。')
+  root.hidden = !receipt
   signal.addEventListener('abort', () => root.remove(), { once: true })
   return {
     isBusy: () => busy,
