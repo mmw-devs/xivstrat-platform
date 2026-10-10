@@ -20,7 +20,7 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
     status.replaceChildren()
 
     if (state.status === 'idle') {
-      status.textContent = '提交前会使用当前编辑器中的 schema 数据，并由服务端再次校验。'
+      status.textContent = '提交前会检查必填内容，图片投稿还会检查本地图片是否齐全。'
       return
     }
     if (state.status === 'submitting') {

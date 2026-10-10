@@ -5,7 +5,7 @@ export function createImagePicker(assets: ImageAssets, initial: string, update: 
   let revision = 0
   let destroyed = false
   const input = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', 'aria-label': '选择本地图片' })
-  const status = el('p', { class: 'hint', role: 'status' }, '图片仅留在当前页面，提交审核时才上传；关闭前请下载攻略包。转换使用高质量有损 WebP，请放大检查文字。')
+  const status = el('p', { class: 'hint', role: 'status', hidden: true })
   const preview = el('img', { alt: '所选图片预览', style: 'max-width:100%;max-height:320px;object-fit:contain', hidden: true })
   const link = el('a', { target: '_blank', rel: 'noopener noreferrer', 'aria-label': '放大查看图片' }, preview)
   const show = (path: string) => {
@@ -18,7 +18,7 @@ export function createImagePicker(assets: ImageAssets, initial: string, update: 
     const file = input.files?.[0]
     if (!file) return
     const current = ++revision
-    input.disabled = true; status.textContent = '正在转换图片…'
+    input.disabled = true; status.hidden = false; status.textContent = '正在转换图片…'
     try {
       const blob = await convertImage(file)
       if (destroyed || current !== revision) return

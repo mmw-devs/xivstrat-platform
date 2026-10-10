@@ -5,6 +5,7 @@ import ReferencesStep from '../../components/editor/ReferencesStep.astro'
 import AuthoringStep from '../../components/editor/AuthoringStep.astro'
 import ProofreadStep from '../../components/editor/ProofreadStep.astro'
 import PreviewStep from '../../components/editor/PreviewStep.astro'
+import ImportStep from '../../components/editor/ImportStep.astro'
 ---
 <EditorLayout>
   <header class="editor-header">
@@ -16,13 +17,16 @@ import PreviewStep from '../../components/editor/PreviewStep.astro'
     <button type="button" data-step="3" class="btn">③ 阶段与机制</button>
     <button type="button" data-step="4" class="btn">④ 全文校对</button>
     <button type="button" data-step="5" class="btn">⑤ 预览 · 校验 · 提交</button>
+    <button type="button" data-step="6" class="btn import-nav">导入现有攻略</button>
   </nav>
   <main class="editor-main">
+    <p id="import-status" class="hint feedback" role="status" aria-live="polite"></p>
     <MetadataStep />
     <ReferencesStep />
     <AuthoringStep />
     <ProofreadStep />
     <PreviewStep />
+    <ImportStep />
   </main>
 </EditorLayout>
 <script>

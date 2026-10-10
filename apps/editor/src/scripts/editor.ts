@@ -1,9 +1,9 @@
-import { createLookup, errorMessage } from '../lib/ui/dom'
+import { createLookup } from '../lib/ui/dom'
 import { createMetadata } from '../lib/editor/metadata'
 import { createAuthoring } from '../lib/editor/authoring'
 import { createSnapshotCache } from '../lib/editor/snapshot'
 import { createDemo } from '../lib/editor/demo'
-import { parseTemplate } from '../lib/editor/import'
+import { mountImport } from '../lib/editor/import-view'
 import { mountPreview } from '../lib/editor/preview-view'
 import { mountSubmission } from '../lib/editor/submission-view'
 import { mountLocalSave } from '../lib/editor/local-save'
@@ -59,9 +59,9 @@ export function initEditor(root: HTMLElement) {
   const cache = createSnapshotCache(collect)
   const reading = (highlight?: ReadingHighlight): void => renderReading(byId('proofread-reading'), collect(), authoring.findBody, highlight)
   const goStep = (step: number): void => {
-    if (![1, 2, 3, 4, 5].includes(step)) return
+    if (![1, 2, 3, 4, 5, 6].includes(step)) return
     activeStep = step
-    for (let i = 1; i <= 5; i++) byId(`step${i}`).classList.toggle('active', step === i)
+    for (let i = 1; i <= 6; i++) byId(`step${i}`).classList.toggle('active', step === i)
     root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(button => {
       const active = Number(button.dataset.step) === step
       button.classList.toggle('active', active)
@@ -85,7 +85,7 @@ export function initEditor(root: HTMLElement) {
     (blockId, paragraph, from, to) => reading({ blockId, paragraph, from, to }))
   mountSubmission(byId, collect, signal, metadata.setOperationTime, assets)
   mountLocalSave(byId, collect, signal, metadata.setOperationTime)
-  mountImagePackage(byId, collect, replace, assets, signal)
+  mountImagePackage(byId, collect, assets, signal)
 
   root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(button => button.addEventListener('click', () => goStep(Number(button.dataset.step)), { signal }))
   const on = (id: string, action: () => void): void => byId(id).addEventListener('click', action, { signal })
@@ -94,12 +94,7 @@ export function initEditor(root: HTMLElement) {
   on('btn-add-ref', authoring.addReference)
   on('btn-add-macro', authoring.addMacro)
   on('btn-add-phase', authoring.addPhase)
-  on('btn-import-template', () => {
-    try {
-      const structure = parseTemplate(byId<HTMLTextAreaElement>('importArea').value)
-      replace(structure)
-    } catch (error) { byId('import-status').textContent = `导入失败：请输入合法的 schema JSON（${errorMessage(error)}）` }
-  })
+  mountImport(byId, replace, assets, signal)
   authoring.addReference()
   authoring.addMacro()
   authoring.addPhase()
