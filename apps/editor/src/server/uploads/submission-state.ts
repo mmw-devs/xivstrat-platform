@@ -1,6 +1,7 @@
 export interface SubmissionCheckpoint {
   status: 'running' | 'retryable' | 'unknown' | 'needs-attention' | 'submitted'
   code?: string
+  failureStage?: string
   owner: string
   repo: string
   baseBranch: string

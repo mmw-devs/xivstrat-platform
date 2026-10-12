@@ -31,6 +31,23 @@ async function imageDraft(page: Page) {
 
 test.beforeEach(async ({ page }) => { await isolateNetwork(page); await page.goto('/editor/'); await imageDraft(page) })
 
+test('image submission displays category, code and stage on wide and narrow screens', async ({ page }, info) => {
+  await page.route('**/api/upload-tasks/**', async route => {
+    const id = route.request().url().split('/').filter(Boolean).at(-1) === 'submit'
+      ? route.request().url().split('/').at(-2)! : route.request().url().split('/').at(-1)!
+    await route.fulfill({ json: { ok: true, task: { id, state: 'ready', remoteSubmission: 'retryable', code: 'GITHUB_NETWORK_ERROR', failureStage: 'blobs' } } })
+  })
+  await page.getByRole('button', { name: '提交审核', exact: true }).click()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await expect(page.locator('#image-submission-status')).toContainText('错误类型：网络连接异常')
+    await expect(page.locator('#image-submission-status')).toContainText('GITHUB_NETWORK_ERROR')
+    await expect(page.locator('#image-submission-status')).toContainText('失败阶段：上传文件到 GitHub')
+    await expect(page.getByRole('button', { name: '继续图片任务' })).toBeEnabled()
+    await page.screenshot({ path: info.outputPath(`image-error-${width}.png`), fullPage: true })
+  }
+})
+
 test('browser → real multipart/SQLite/worker → simulated GitHub; lost response recovers without duplicate PR', async ({ page }, info) => {
   const directory = mkdtempSync(join(tmpdir(), 'xivstrat-browser-upload-'))
   const store = new UploadStore(directory), api = remote()
@@ -158,7 +175,7 @@ test('expired upload restores from ZIP under the same receipt, despite export op
   expect(putCount).toBe(1)
   await page.locator('[data-step="6"]').click()
   await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'strategy-package.zip', mimeType: 'application/zip', buffer: await readFile(path!) })
-  await page.getByRole('button', { name: '确认导入', exact: true }).click()
+  await page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true }).click()
   await expect(page.getByText('攻略包导入成功，图片已恢复到当前页面。')).toBeVisible()
   await page.getByRole('button', { name: '继续图片任务', exact: true }).click()
   await expect(page.locator('#image-submission-status')).toContainText('图片远程投稿未启用')

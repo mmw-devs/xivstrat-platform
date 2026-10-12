@@ -50,7 +50,8 @@ export function initEditor(root: HTMLElement) {
   const bannerPicker = createImagePicker(assets, bannerInput.value, path => {
     bannerInput.value = path; bannerInput.dispatchEvent(new Event('input'))
   })
-  bannerInput.insertAdjacentElement('afterend', bannerPicker.root)
+  bannerPicker.controls.prepend(bannerInput.parentElement!)
+  byId('banner-section').append(bannerPicker.root)
   bannerInput.addEventListener('input', () => bannerPicker.show(bannerInput.value), { signal })
   const authoring = createAuthoring({
     references: byId('refs'), macros: byId('macros'), phases: byId('phases'), changed, assets,
@@ -106,6 +107,7 @@ export function initEditor(root: HTMLElement) {
       panel?.destroy()
       authoring.destroy()
       bannerPicker.destroy()
+      byId('banner-section').prepend(bannerInput.parentElement!)
       bannerPicker.root.remove()
       assets.clear()
       instances.delete(root)

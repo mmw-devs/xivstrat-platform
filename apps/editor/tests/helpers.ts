@@ -23,6 +23,6 @@ export async function saveLocal(page: Page): Promise<StrategyStructure> {
 export async function importStructure(page: Page, structure: StrategyStructure): Promise<void> {
   await page.getByRole('button', { name: '导入现有攻略', exact: true }).click()
   await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'strategy.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(structure)) })
-  await page.getByRole('button', { name: '确认导入', exact: true }).click()
+  await page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true }).click()
   await expect(page.locator('#import-status')).toContainText('导入成功')
 }

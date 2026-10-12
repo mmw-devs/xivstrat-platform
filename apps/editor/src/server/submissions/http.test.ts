@@ -200,7 +200,19 @@ test('unknown write outcomes are preserved as not safe to retry', async () => {
   assert.equal(response.status, 502)
   assert.equal(body.error.code, 'SUBMISSION_OUTCOME_UNKNOWN')
   assert.equal(body.error.retrySafe, false)
+  assert.equal(body.error.failureCode, 'PR_CREATE_ERROR')
   assert.doesNotMatch(JSON.stringify(body), /not-performed|internal/)
+})
+
+test('text submission returns classified transport failure and stage without raw diagnostics', async () => {
+  const error = new GitHubIntegrationError('GITHUB_INSTALLATION_AUTH_ERROR', 'private secret',
+    Object.assign(new Error('TLS socket disconnected'), { status: 500 }),
+    { stage: 'D1.3', githubMessage: 'Authorization: secret-token' })
+  const response = await handleSubmissionRequest(jsonRequest(rawSubmission), dependencies(async () => { throw error }))
+  const body = await response.json()
+  assert.equal(body.error.failureCode, 'GITHUB_NETWORK_ERROR')
+  assert.equal(body.error.failureStage, 'D1.3')
+  assert.doesNotMatch(JSON.stringify(body), /secret|Authorization|socket/)
 })
 
 test('safe logs retain only recovery fields for an unknown outcome', async () => {

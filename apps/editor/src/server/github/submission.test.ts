@@ -100,6 +100,7 @@ test('missing file creates a new file with canonical JSON on a fresh content bra
   assert.equal('sha' in write.parameters, false)
   assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson({ ...structure, metadata: { ...structure.metadata, publish_time: result.publishTime } }))
   assert.equal(pull.parameters.base, 'main')
+  assert.equal(pull.parameters.title, '[XivStrat Editor] submission-test')
   assert.equal(pull.parameters.head, result.branch)
   assert.equal(result.commitSha, 'commit-sha')
   assert.equal(result.headSha, 'commit-sha')

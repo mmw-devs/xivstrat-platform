@@ -35,6 +35,24 @@ function setup() {
 }
 function count(api: ReturnType<typeof remote>, suffix: string) { return api.calls.filter(call => call.route.startsWith('POST') && call.route.endsWith(suffix)).length }
 
+test('network failure persists a safe category and stage, and recovery clears stale diagnostics', async () => {
+  const local = setup(), api = remote()
+  try {
+    const worker = createImageSubmissionWorker(local.store, async () => { throw Object.assign(new Error('TLS socket disconnected; private secret'), { status: 500 }) })
+    worker.start(local.id, local.owner); await worker.idle()
+    const failed = local.store.submission(local.id, local.owner)!
+    assert.equal(failed.code, 'GITHUB_NETWORK_ERROR')
+    assert.equal(failed.failureStage, 'initialize')
+    assert.equal(failed.status, 'retryable')
+    assert.doesNotMatch(JSON.stringify(failed), /private secret/)
+    const recovered = createImageSubmissionWorker(local.store, api.runtime())
+    recovered.start(local.id, local.owner); await recovered.idle()
+    const done = local.store.submission(local.id, local.owner)!
+    assert.equal(done.status, 'submitted')
+    assert.equal(done.code, undefined); assert.equal(done.failureStage, undefined)
+  } finally { local.close() }
+})
+
 test('one complete commit and PR, fixed operation time, and cleanup only after confirmation', async () => {
   const local = setup(), api = remote()
   try {
@@ -43,6 +61,7 @@ test('one complete commit and PR, fixed operation time, and cleanup only after c
     await worker.idle()
     const job = local.store.submission(local.id, local.owner)!
     assert.equal(job.status, 'submitted', job.code)
+    assert.equal(api.calls.find(call => call.route === 'POST /repos/{owner}/{repo}/pulls')!.args.title, '[XivStrat Editor] image-job')
     assert.equal(count(api, '/git/commits'), 1); assert.equal(count(api, '/pulls'), 1)
     assert.equal(api.blobs.size, 2)
     assert.deepEqual(api.trees.get(job.treeSha!)!.map(entry => entry.path), ['content/strategies/image-job.json', `content/assets/images/${local.imageName}`])

@@ -4,6 +4,7 @@ import { validateStructure, type StrategyStructure } from '@xivstrat/content-sch
 import { hasManagedImages } from './image-references'
 import { mountImageSubmission } from './image-submission-view'
 import type { ImageAssets } from './image-assets'
+import { submissionErrorText } from './submission-errors'
 export function mountSubmission(byId: ElementLookup, getStructure: () => StrategyStructure, signal: AbortSignal, onSubmitted?: (time: string) => void, assets?: ImageAssets): void {
   let submissionController: SubmissionController | undefined
   let images: ReturnType<typeof mountImageSubmission> | undefined
@@ -44,7 +45,7 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
     }
 
     const result = el('div', { class: `submission-result ${state.retrySafe ? 'error' : 'warning'}` })
-    result.append(el('strong', {}, state.message))
+    result.append(el('strong', {}, state.message), el('p', {}, submissionErrorText(state.failureCode ?? state.code, state.failureStage)))
     if (state.details.length) {
       const details = el('ul', { class: 'vlist' })
       state.details.forEach((detail) => details.append(el('li', { class: 'err' }, detail)))

@@ -2,10 +2,11 @@ import { normalizeStructure, structureToJson, validateStructure, type StrategySt
 import { el } from '../ui/dom'
 import type { ImageAssets } from './image-assets'
 import { imageReferences } from './image-references'
+import { submissionErrorText } from './submission-errors'
 
 const KEY = 'xivstrat:image-submission:v1'
 type Receipt = { id: string; digest: string; complete: boolean; operationTime: string }
-type Task = { id: string; state: string; remoteSubmission: string; code?: string; result?: { prNumber: number; prUrl: string } }
+type Task = { id: string; state: string; remoteSubmission: string; code?: string; failureStage?: string; result?: { prNumber: number; prUrl: string } }
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
 
 /** Keep only the receipt across reloads. Image bytes remain in memory / the author's ZIP. */
@@ -47,7 +48,7 @@ export function mountImageSubmission(host: HTMLElement, assets: ImageAssets, get
     })
     const value = await response.json()
     if (method === 'GET' && response.status === 404 && value?.error?.code === 'NOT_FOUND') return null
-    if (!response.ok || value?.ok !== true) throw new Error(typeof value?.error?.message === 'string' ? value.error.message : '任务接口暂不可用')
+    if (!response.ok || value?.ok !== true) throw new Error(`${typeof value?.error?.message === 'string' ? value.error.message : '任务接口暂不可用'}；${submissionErrorText(typeof value?.error?.code === 'string' ? value.error.code : 'SUBMISSION_FAILED')}`)
     const task = value.task as Task
     if (!task || task.id !== receipt!.id || !['receiving', 'ready', 'reupload-required', 'submitted'].includes(task.state)
       || !['not-started', 'running', 'retryable', 'unknown', 'needs-attention', 'submitted'].includes(task.remoteSubmission)) throw new Error('任务响应无效，请查询原任务或联系维护者')
@@ -72,7 +73,7 @@ export function mountImageSubmission(host: HTMLElement, assets: ImageAssets, get
       'not-started': task.state === 'ready' ? '图片已暂存，可点击继续提交 GitHub。' : '素材未就绪，可保留原快照及图片后点击继续。',
     }
     render(task.state === 'receiving' ? '正在接收和校验图片…' : messages[task.remoteSubmission])
-    if (task.code) message.append(`（${task.code}）`)
+    if (task.code) message.append(el('span', { class: 'submission-error-detail' }, submissionErrorText(task.code, task.failureStage)))
     resume.hidden = task.remoteSubmission === 'needs-attention'
   }
   async function poll(task: Task | null) {
@@ -127,7 +128,7 @@ export function mountImageSubmission(host: HTMLElement, assets: ImageAssets, get
     busy = true; setBusy(true); query.disabled = resume.disabled = true
     try { await action() }
     catch (error) {
-      if (!signal.aborted) render(`${error instanceof Error ? error.message : '网络连接失败'}。请先查询原任务；不会自动重复提交。`)
+      if (!signal.aborted) render(`${error instanceof TypeError ? submissionErrorText('NETWORK_ERROR') : error instanceof DOMException && error.name === 'TimeoutError' ? '错误类型：请求超时（REQUEST_TIMEOUT）' : error instanceof Error ? error.message : '网络连接失败'}。请先查询原任务；不会自动重复提交。`)
     } finally {
       busy = false
       if (!signal.aborted) { setBusy(false); query.disabled = resume.disabled = false }

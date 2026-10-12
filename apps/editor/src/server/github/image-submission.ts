@@ -5,7 +5,9 @@ import { normalizeStructure, stampOperation, structureToJson, validateStructure 
 import { imageReferences } from '../../lib/editor/image-references.ts'
 import { UploadStore, UploadError } from '../uploads/store.ts'
 import type { SubmissionCheckpoint } from '../uploads/submission-state.ts'
-import { productionRuntime, strategyFilePath, type SubmissionRuntimeFactory } from './submission.ts'
+import { productionRuntime, strategyFilePath, editorSubmissionTitle, type SubmissionRuntimeFactory } from './submission.ts'
+import { submissionFailureCode } from './failure.ts'
+import { GitHubIntegrationError } from './types.ts'
 
 export function gitBlobSha(bytes: Buffer): string {
   return createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')
@@ -27,7 +29,8 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
       branch: `content/${id}`, publishTime: new Date().toISOString(), entries: [],
     } satisfies SubmissionCheckpoint
     const save = () => store.saveSubmission(id, owner, job)
-    job.status = 'running'; delete job.code; save()
+    job.status = 'running'; delete job.code; delete job.failureStage; save()
+    let stage = 'initialize'
     try {
       const runtime = await runtimeFactory()
       const { config, octokit } = runtime
@@ -35,6 +38,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
       if (job.baseSha && (job.owner !== config.owner || job.repo !== config.repo || job.baseBranch !== config.baseBranch)) throw new WorkflowError('TARGET_CHANGED')
       const task = store.get(id, owner)!
       const readSnapshot = async () => {
+        stage = 'snapshot'
         if (store.get(id, owner)?.state !== 'ready') throw new WorkflowError('REUPLOAD_REQUIRED')
         const raw = await readFile(join(store.directory(id), 'strategy.json'), 'utf8')
         if (createHash('sha256').update(raw).digest('hex') !== task.digest) throw new WorkflowError('SNAPSHOT_CHANGED')
@@ -56,6 +60,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
       let snapshot: Awaited<ReturnType<typeof readSnapshot>> | undefined
       if (!job.baseSha) {
         snapshot = await readSnapshot()
+        stage = 'base'
         const base = await octokit.request('GET /repos/{owner}/{repo}/git/commits/{commit_sha}', { ...target, commit_sha: runtime.baseHeadSha })
         job = { ...job, owner: config.owner, repo: config.repo, baseBranch: config.baseBranch, baseSha: runtime.baseHeadSha, baseTree: base.data.tree.sha,
           entries: snapshot.map(entry => ({ path: entry.path, name: entry.name, sha: gitBlobSha(entry.data), uploaded: false })) }
@@ -68,6 +73,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         for (const entry of job.entries) {
           if (entry.uploaded) continue
           const data = snapshot.find(file => file.path === entry.path)!.data
+          stage = 'blobs'
           const blob = await octokit.request('POST /repos/{owner}/{repo}/git/blobs', {
             ...target, content: data.toString('base64'), encoding: 'base64', request: { timeout: 30_000, retries: 0 },
           })
@@ -76,6 +82,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         }
       }
       if (!job.treeSha) {
+        stage = 'tree'
         const tree = await octokit.request('POST /repos/{owner}/{repo}/git/trees', { ...target, base_tree: job.baseTree,
           tree: job.entries.map(entry => ({ path: entry.path, mode: '100644' as const, type: 'blob' as const, sha: entry.sha })),
           request: { timeout: 30_000, retries: 0 },
@@ -83,6 +90,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         job.treeSha = tree.data.sha; save()
       }
       if (!job.commitSha) {
+        stage = 'commit'
         const identity = { name: 'XivStrat Publisher', email: 'xivstrat-publisher@users.noreply.github.com', date: job.publishTime }
         const commit = await octokit.request('POST /repos/{owner}/{repo}/git/commits', { ...target, message: `content: image submission ${id}`,
           tree: job.treeSha, parents: [job.baseSha], author: identity, committer: identity, request: { timeout: 30_000, retries: 0 },
@@ -90,6 +98,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         job.commitSha = commit.data.sha; save()
       }
       // Confirm immutable commit and every file before exposing a branch or deleting local bytes.
+      stage = 'verify'
       const commit = await octokit.request('GET /repos/{owner}/{repo}/git/commits/{commit_sha}', { ...target, commit_sha: job.commitSha })
       if (commit.data.tree.sha !== job.treeSha || commit.data.parents.length !== 1 || commit.data.parents[0].sha !== job.baseSha) throw new WorkflowError('COMMIT_MISMATCH')
       for (const entry of job.entries) {
@@ -97,6 +106,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         if (Array.isArray(content.data) || !('sha' in content.data) || content.data.sha !== entry.sha || content.data.type !== 'file') throw new WorkflowError('REMOTE_CONTENT_MISMATCH')
       }
       let refSha: string | undefined
+      stage = 'branch'
       try {
         const ref = await octokit.request('GET /repos/{owner}/{repo}/git/ref/{ref}', { ...target, ref: `heads/${job.branch}` })
         refSha = ref.data.object.sha
@@ -113,6 +123,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         if (ref.data.object.sha !== job.commitSha) throw new WorkflowError('BRANCH_CHANGED')
       }
       let found: { number: number; html_url: string } | undefined
+      stage = 'pr'
       for (let page = 1; ; page++) {
         if (page > 10) throw new WorkflowError('PR_LOOKUP_LIMIT')
         const prs = await octokit.request('GET /repos/{owner}/{repo}/pulls', { ...target, head: `${job.owner}:${job.branch}`, state: 'all', per_page: 100, page })
@@ -128,7 +139,7 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
         if (job.prAttempted) throw new WorkflowError('PR_OUTCOME_UNKNOWN')
         job.prAttempted = true; save()
         const pr = await octokit.request('POST /repos/{owner}/{repo}/pulls', { ...target, base: job.baseBranch, head: job.branch,
-          title: `content: image submission ${id}`, body: `Submission ID: ${id}\nSnapshot: ${task.digest}\nCommit: ${job.commitSha}`,
+          title: editorSubmissionTitle(job.entries.find(entry => entry.name === 'strategy.json')!.path.split('/').at(-1)!.replace(/\.json$/, '')), body: `Submission ID: ${id}\nSnapshot: ${task.digest}\nCommit: ${job.commitSha}`,
           request: { timeout: 30_000, retries: 0 },
         })
         if (pr.data.head.sha !== job.commitSha || pr.data.base.ref !== job.baseBranch || pr.data.head.ref !== job.branch) throw new WorkflowError('PR_CHANGED')
@@ -138,7 +149,8 @@ export function createImageSubmissionWorker(store: UploadStore, runtimeFactory: 
       job.status = 'submitted'; save()
       try { store.release(id) } catch { job.code = 'LOCAL_CLEANUP_PENDING'; save() }
     } catch (error) {
-      job.code = error instanceof WorkflowError ? error.code : 'GITHUB_REQUEST_FAILED'
+      job.code = error instanceof WorkflowError ? error.code : submissionFailureCode(error)
+      job.failureStage = error instanceof GitHubIntegrationError ? error.diagnostic?.stage ?? stage : stage
       job.status = error instanceof WorkflowError && !['REUPLOAD_REQUIRED', 'BRANCH_OUTCOME_UNKNOWN', 'PR_OUTCOME_UNKNOWN'].includes(error.code)
         ? 'needs-attention' : job.branchAttempted || job.prAttempted ? 'unknown' : 'retryable'
       save()

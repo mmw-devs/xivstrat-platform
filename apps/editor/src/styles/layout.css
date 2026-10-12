@@ -46,6 +46,7 @@
 .backup-options .btn { justify-self: start; }
 .backup-options .hint { margin: 0; }
 .import-filename { overflow-wrap: anywhere; }
+.submission-error-detail { display: block; margin-block-start: var(--space-6); overflow-wrap: anywhere; }
 .import-warning {
   padding: var(--space-8);
   margin: 0;
@@ -72,6 +73,12 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-field-min)), 1fr));
   gap: var(--space-6);
 }
+.metadata-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.image-picker-controls { min-width: 0; align-content: start; }
+.image-selection { overflow-wrap: anywhere; margin: 0; }
+.image-thumbnail { display: block; max-width: 100%; max-height: 240px; object-fit: contain; }
+.image-preview-link { justify-self: start; min-width: 0; }
+.banner-section .image-picker { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--space-12); }
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -134,6 +141,7 @@
 }
 /* Breakpoints are intentionally literals: CSS custom properties cannot drive media queries. */
 @media (max-width: 56.25rem) {
+  .metadata-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .body-workspace {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -142,6 +150,7 @@
   }
 }
 @media (max-width: 40rem) {
+  .metadata-fields, .banner-section .image-picker { grid-template-columns: minmax(0, 1fr); }
   .backup-options { grid-template-columns: minmax(0, 1fr); }
   .row > :not(.btn) {
     flex-basis: 100%;

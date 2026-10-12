@@ -1,4 +1,5 @@
-import { structureToJson, stampOperation, isValidDutyName, type StrategyStructure } from '@xivstrat/content-schema'
+import { structureToJson, stampOperation, type StrategyStructure } from '@xivstrat/content-schema'
+import { localDownloadName } from './download-name'
 import { errorMessage, type ElementLookup } from '../ui/dom'
 
 /** Temporary local backup, independent of submission availability and validation. */
@@ -8,11 +9,10 @@ export function mountLocalSave(byId: ElementLookup, collect: () => StrategyStruc
     try {
       const structure = stampOperation(collect())
       const json = structureToJson(structure)
-      const name = isValidDutyName(structure.metadata.name, structure.metadata.type) ? structure.metadata.name : 'strategy-draft'
       const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }))
       const anchor = document.createElement('a')
       anchor.href = url
-      anchor.download = `${name}.json`
+      anchor.download = localDownloadName(structure, 'json')
       document.body.append(anchor)
       try {
         anchor.click()

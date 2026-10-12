@@ -1,9 +1,9 @@
 /** Session-only assets. References are portable; object URLs never enter JSON. */
 export function createImageAssets() {
-  const files = new Map<string, { blob: Blob; url: string }>()
+  const files = new Map<string, { blob: Blob; url: string; name?: string }>()
   let generation = 0
   const store = {
-    async add(blob: Blob): Promise<string> {
+    async add(blob: Blob, name?: string): Promise<string> {
       const started = generation
       const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))]
         .map(byte => byte.toString(16).padStart(2, '0')).join('')
@@ -11,11 +11,13 @@ export function createImageAssets() {
       if (generation !== started) throw new Error('图片处理已取消')
       const used = [...files.values()].reduce((sum, file) => sum + file.blob.size, 0)
       if (!files.has(path) && used + blob.size > 60 * 1024 * 1024) throw new Error('当前页面素材超过 60 MiB，请导出攻略包后重新导入以清理未使用图片')
-      if (!files.has(path)) files.set(path, { blob, url: URL.createObjectURL(blob) })
+      if (!files.has(path)) files.set(path, { blob, url: URL.createObjectURL(blob), name })
+      else if (name) files.get(path)!.name = name
       return path
     },
     resolve(path: string): string | undefined { return files.get(path)?.url },
     get(path: string): Blob | undefined { return files.get(path)?.blob },
+    name(path: string): string | undefined { return files.get(path)?.name },
     entries(): [string, Blob][] { return [...files].map(([path, file]) => [path, file.blob]) },
     replaceFrom(other: { entries(): [string, Blob][] }) {
       store.clear()

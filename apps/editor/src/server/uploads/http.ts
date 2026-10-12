@@ -14,7 +14,7 @@ function publicTask(task: UploadTask, store: UploadStore) {
   const job = store.submission(task.id, task.owner)
   return { id: task.id, state: task.state, bytes: task.state === 'ready' ? task.bytes : 0,
     updatedAt: new Date(task.updated).toISOString(), remoteSubmission: job?.status ?? 'not-started',
-    ...(job?.code ? { code: job.code } : {}), ...(job?.result ? { result: job.result } : {}) }
+    ...(job?.code ? { code: job.code, failureStage: job.failureStage } : {}), ...(job?.result ? { result: job.result } : {}) }
 }
 function reply(response: ServerResponse, status: number, value: unknown): void {
   if (response.destroyed || response.headersSent) return

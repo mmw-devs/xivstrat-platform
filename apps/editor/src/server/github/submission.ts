@@ -16,6 +16,7 @@ import { safeGitHubApiDiagnostic, type InstallationOctokit } from './app.ts'
 
 const STRATEGY_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const TARGET_DIRECTORY = 'content/strategies/'
+export function editorSubmissionTitle(name: string): string { return `[XivStrat Editor] ${name}` }
 
 export interface SubmissionResult {
   submissionId: string
@@ -202,7 +203,7 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
       const pullRequest = await octokit.request('POST /repos/{owner}/{repo}/pulls', {
         owner: config.owner,
         repo: config.repo,
-        title: `content: submit ${strategyName}`,
+        title: editorSubmissionTitle(strategyName),
         body: `Strategy name: ${strategyName}\nFile: ${filePath}\nSubmission ID: ${submissionId}`,
         head: branch,
         base: config.baseBranch,

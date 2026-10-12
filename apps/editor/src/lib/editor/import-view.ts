@@ -52,7 +52,7 @@ export function mountImport(byId: ElementLookup, replace: (value: StrategyStruct
       staged.clear()
       choose.disabled = input.disabled = false
       confirm.disabled = !selected
-      confirm.textContent = '确认导入'
+      confirm.textContent = '确认导入（会覆盖现有内容）'
     }
   }
 }
