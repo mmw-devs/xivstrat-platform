@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "name": "the-test-picure",
+    "type": "ultimate",
+    "title": "图片测试副本",
+    "banner": "assets/images/68dbc4d95a6e6a0ab68835d5557d9d41bea2a50e6a1a59d9346108838b03e3c8.webp",
+    "publish_time": "2026-10-12T07:03:45.623Z",
+    "status": "draft",
+    "video": "https://www.bilibili.com/video/BV114514/"
+  },
+  "phases": [
+    {
+      "name": "p1-前半",
+      "mechanics": [
+        {
+          "name": "示例机制",
+          "sections": [
+            {
+              "type": "mechanic",
+              "title": "机制说明",
+              "content": [
+                {
+                  "type": "text",
+                  "id": "bd7fd0eb-9a1a-4f14-9f8b-6e417bae6d88",
+                  "doc": {
+                    "type": "doc",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "处理机制时注意观察标记。"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "image",
+                  "file": "assets/images/207aada18090e1d4d0c14a837f7fcef645c3c892084516b1d91c5a47dd77ada0.webp",
+                  "caption": "BUFF说明"
+                },
+                {
+                  "type": "image",
+                  "file": "assets/images/07906bd869650710a2e6c910f48cf0fb2faefa7e7e5db3cd0f1878887a97c5f4.webp",
+                  "caption": "死刑小图测试"
+                }
+              ]
+            },
+            {
+              "type": "solution",
+              "title": "固定站位",
+              "content": [
+                {
+                  "type": "text",
+                  "id": "c91cd626-4f1f-400d-83d3-e905275146c5",
+                  "doc": {
+                    "type": "doc",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "被点名的人远离人群。"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "image",
+                  "file": "assets/images/3195e654ce0ab24e9980145771311dbca79e1881cdb426b5aaae49608a3a533d.webp",
+                  "caption": "透明底图测试"
+                }
+              ]
+            },
+            {
+              "type": "note",
+              "title": "",
+              "content": [
+                {
+                  "type": "text",
+                  "id": "98a51d9d-cfc5-4dda-8c10-8d5803c26568",
+                  "doc": {
+                    "type": "doc",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "这是注意事项。"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "image",
+                  "file": "assets/images/68dbc4d95a6e6a0ab68835d5557d9d41bea2a50e6a1a59d9346108838b03e3c8.webp",
+                  "caption": "大图测试"
+                }
+              ]
+            }
+          ],
+          "sub_mechanics": []
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "label": "示例视频",
+      "url": "https://www.bilibili.com/video/BVxxxxxx/"
+    }
+  ],
+  "macros": [
+    {
+      "name": "示例站位",
+      "code": "/p 【机制】MT去A点\n/p {D}去B点"
+    }
+  ]
+}
