@@ -1,6 +1,8 @@
+import { readFile } from 'node:fs/promises'
 import { test, expect } from '@playwright/test'
 import { createEmptyStructure, normalizeStructure, plainTextDocument, type StrategyStructure } from '@xivstrat/content-schema'
 import { importStructure, isolateNetwork, saveLocal } from './helpers'
+import { zipSync, strToU8, unzipSync } from 'fflate'
 
 const metadata = {
   ...createEmptyStructure().metadata, name: 'browser-test', type: 'other' as const,
@@ -9,6 +11,157 @@ const metadata = {
 const fields = { name: 'inp-name', title: 'inp-title', banner: 'inp-banner' } as const
 
 test.beforeEach(async ({ page }) => { await isolateNetwork(page); await page.goto('/editor/') })
+
+test('review sections and separate import page work on wide and narrow screens', async ({ page }, info) => {
+  await page.locator('[data-step="5"]').click()
+  await expect(page.locator('#step5 h2')).toHaveText([/校验结果/, '提交审核', '内容预览', '保存到本地'])
+  await expect(page.locator('#import-file')).not.toBeVisible()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.screenshot({ path: info.outputPath(`review-${width}.png`), fullPage: true })
+    await page.getByRole('button', { name: '导入现有攻略', exact: true }).click()
+    await expect(page.locator('.import-warning')).toContainText('覆盖当前正在编辑的攻略')
+    await expect(page.locator('#btn-submit-review')).not.toBeVisible()
+    await expect(page.getByRole('button', { name: '选择文件', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440) {
+      const nav = await page.locator('.steps').boundingBox()
+      const button = await page.locator('.import-nav').boundingBox()
+      expect(nav!.x + nav!.width - button!.x - button!.width).toBeLessThan(40)
+    }
+    await page.screenshot({ path: info.outputPath(`import-${width}.png`), fullPage: true })
+    await page.locator('[data-step="5"]').click()
+  }
+  await page.locator('#btn-load-demo').click()
+  const original = await saveLocal(page)
+  const changed = { ...original, metadata: { ...original.metadata, title: '从 JSON 文件恢复' } }
+  await page.locator('[data-step="6"]').click()
+  await expect(page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true })).toBeDisabled()
+  await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'strategy.JSON', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(changed)) })
+  await expect(page.locator('#import-filename')).toHaveText('strategy.JSON')
+  await expect(page.locator('#step6')).toBeVisible()
+  await page.locator('[data-step="5"]').click()
+  expect((await saveLocal(page)).metadata.title).toBe(original.metadata.title)
+  await page.locator('[data-step="6"]').click()
+  await page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true }).click()
+  await expect(page.locator('#step5')).toBeVisible()
+  expect((await saveLocal(page)).metadata.title).toBe('从 JSON 文件恢复')
+})
+
+test('local images survive ZIP backup and fresh-page import without uploading', async ({ page }, testInfo) => {
+  let uploads = 0
+  await page.route('**/api/submissions', route => { uploads++; return route.abort() })
+  const fixture = normalizeStructure({ ...createEmptyStructure(), metadata: { ...metadata, banner: '' }, phases: [{ name: 'p1', mechanics: [{
+    name: '图片机制', sub_mechanics: [], sections: [{ type: 'note', title: '', content: [{ type: 'image', file: '', caption: '站位图' }] }],
+  }] }] })
+  await importStructure(page, fixture)
+  await page.locator('[data-step="1"]').click()
+  await expect(page.locator('#banner-section').getByRole('button', { name: '选择图片', exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('banner-file-picker.png'), fullPage: true })
+  await page.locator('[data-step="3"]').click()
+  const pickerStyle = await page.locator('#phases .image-picker button').first().evaluate(input => {
+    const actual = getComputedStyle(input)
+    const reference = getComputedStyle(document.querySelector('.import-nav')!)
+    return [actual.backgroundColor === reference.backgroundColor, actual.borderRadius === reference.borderRadius, actual.color === reference.color]
+  })
+  expect(pickerStyle).toEqual([true, true, true])
+  await page.screenshot({ path: testInfo.outputPath('body-file-picker.png'), fullPage: true })
+  const bytes = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 240
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#ffffff'; context.fillRect(0, 0, 480, 240)
+    context.fillStyle = '#111111'; context.font = '24px sans-serif'; context.fillText('站位 A → B', 30, 100)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await page.locator('#phases input[type="file"]').setInputFiles({ name: 'diagram.png', mimeType: 'image/png', buffer: Buffer.from(bytes, 'base64') })
+  await expect(page.locator('#phases [role="status"]')).toContainText('尚未上传')
+  await page.locator('[data-step="5"]').click()
+  await expect(page.locator('#preview img')).toBeVisible()
+  expect(await page.locator('#preview img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(480)
+  expect(uploads).toBe(0)
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: '保存图片+文本（ZIP）' }).click()
+  const downloaded = await downloading
+  expect(downloaded.suggestedFilename()).toBe('browser-test.zip')
+  const path = await downloaded.path()
+  await page.reload()
+  await page.locator('[data-step="6"]').click()
+  await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'strategy-package.zip', mimeType: 'application/zip', buffer: await readFile(path!) })
+  await page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true }).click()
+  await expect(page.getByText('攻略包导入成功，图片已恢复到当前页面。')).toBeVisible()
+  await expect(page.locator('#preview img')).toBeVisible()
+  expect(await page.locator('#preview img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(480)
+  await page.locator('[data-step="6"]').click()
+  await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({
+    name: 'unsafe.zip', mimeType: 'application/zip', buffer: Buffer.from(zipSync({ '../outside.webp': strToU8('invalid') })),
+  })
+  await page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true }).click()
+  await expect(page.getByText('导入失败：攻略包包含不允许的路径')).toBeVisible()
+  await page.locator('[data-step="5"]').click()
+  await expect(page.locator('#preview img')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('image-package.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('#preview img')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('image-package-mobile.png'), fullPage: true })
+})
+
+test('banner selection preserves fields, reports failed replacements and removes only its reference', async ({ page }, info) => {
+  const banner = page.locator('#banner-section')
+  const picker = banner.locator('input[type="file"]')
+  const bytes = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 675
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#7042d9'; ctx.fillRect(0, 0, 1200, 675)
+    ctx.fillStyle = 'white'; ctx.font = '60px sans-serif'; ctx.fillText('横幅预览 Banner', 80, 180)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  const file = { name: '我的横幅.png', mimeType: 'image/png', buffer: Buffer.from(bytes, 'base64') }
+  for (const width of [1440, 800, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const before = await page.locator('#inp-video').boundingBox()
+    await picker.setInputFiles(file)
+    await expect(banner.locator('.image-selection')).toHaveText('已选择：我的横幅.png')
+    await expect(banner.locator('[role="status"]')).toContainText('尚未上传')
+    await expect(banner.getByRole('button', { name: '更换图片' })).toBeEnabled()
+    expect((await page.locator('#inp-video').boundingBox())!.y).toBe(before!.y)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath(`banner-selected-${width}.png`), fullPage: true })
+    if (width !== 390) await banner.getByRole('button', { name: '移除图片' }).click()
+  }
+  const selectedPath = await page.locator('#inp-banner').inputValue()
+  await picker.setInputFiles({ name: '损坏图片.png', mimeType: 'image/png', buffer: Buffer.from('invalid image') })
+  await expect(banner.locator('[role="status"]')).toContainText('更换失败，仍保留原图片')
+  await expect(banner.locator('.image-selection')).toHaveText('已选择：我的横幅.png')
+  await expect(page.locator('#inp-banner')).toHaveValue(selectedPath)
+  await expect(banner.locator('img')).toBeVisible()
+  await page.screenshot({ path: info.outputPath('banner-replacement-error.png'), fullPage: true })
+  await page.locator('[data-step="3"]').click()
+  await page.getByRole('button', { name: '＋ 添加机制', exact: true }).click()
+  await page.getByRole('button', { name: '＋ 添加区块', exact: true }).click()
+  await page.getByRole('button', { name: '＋ 添加图片', exact: true }).click()
+  await page.locator('#phases input[type="file"]').setInputFiles(file)
+  await expect(page.locator('#phases [role="status"]')).toContainText('尚未上传')
+  await page.locator('[data-step="1"]').click()
+  await banner.getByRole('button', { name: '移除图片' }).click()
+  await expect(page.locator('#inp-banner')).toHaveValue('')
+  await expect(banner.locator('img')).not.toBeVisible()
+  await expect(banner.locator('.image-selection')).not.toBeVisible()
+  await page.locator('[data-step="5"]').click()
+  await expect(page.locator('#preview img')).toBeVisible()
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: '保存图片+文本（ZIP）' }).click()
+  const download = await downloading
+  expect(download.suggestedFilename()).toBe('strategy-draft.zip')
+  const entries = unzipSync(await readFile((await download.path())!))
+  expect(Object.keys(entries).sort()).toEqual([selectedPath, 'strategy.json'].sort())
+  expect(JSON.parse(new TextDecoder().decode(entries['strategy.json'])).metadata.banner).toBe('')
+  await page.locator('[data-step="3"]').click()
+  await page.locator('#phases').getByRole('button', { name: '移除图片' }).click()
+  await page.locator('[data-step="5"]').click()
+  const emptyDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: '保存图片+文本（ZIP）' }).click()
+  expect(Object.keys(unzipSync(await readFile((await (await emptyDownload).path())!)))).toEqual(['strategy.json'])
+})
 
 async function mockSubmission(page: import('@playwright/test').Page) {
   const requests: StrategyStructure[] = []
@@ -20,6 +173,19 @@ async function mockSubmission(page: import('@playwright/test').Page) {
   })
   return requests
 }
+
+test('text submission displays error category and stage without relaxing unknown-result protection', async ({ page }, info) => {
+  await page.locator('[data-step="5"]').click()
+  await page.locator('#btn-load-demo').click()
+  await page.route('**/api/submissions', route => route.fulfill({ status: 502, json: { ok: false, error: {
+    code: 'SUBMISSION_OUTCOME_UNKNOWN', failureCode: 'GITHUB_NETWORK_ERROR', failureStage: 'D2.pr-create', retrySafe: false,
+  } } }))
+  await page.getByRole('button', { name: '提交审核', exact: true }).click()
+  await expect(page.locator('#submission-status')).toContainText('错误类型：网络连接异常')
+  await expect(page.locator('#submission-status')).toContainText('失败阶段：创建 PR')
+  await expect(page.locator('#btn-submit-review')).toBeDisabled()
+  await page.screenshot({ path: info.outputPath('text-submission-error.png'), fullPage: true })
+})
 
 test('actual form, Tiptap edits and block ordering reach preview, local save and submitted body', async ({ page }) => {
   const requests = await mockSubmission(page)
@@ -89,9 +255,11 @@ test('rejected unrelated JSON preserves unsaved editor content and subsequent su
   await page.locator('[data-step="5"]').click()
   const before = await saveLocal(page)
   for (const raw of ['{"phases":[]}', '{"foo":"完全无关的数据","phases":[]}', '{"metadata":{},"phases":[]}']) {
-    await page.locator('#importArea').fill(raw)
-    await page.getByRole('button', { name: '导入已有攻略', exact: true }).click()
+    await page.locator('[data-step="6"]').click()
+    await page.getByLabel('导入攻略文件', { exact: true }).setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(raw) })
+    await page.getByRole('button', { name: '确认导入（会覆盖现有内容）', exact: true }).click()
     await expect(page.locator('#import-status')).toContainText('导入失败')
+    await page.locator('[data-step="5"]').click()
     await expect(page.locator('#preview')).toContainText('误导入前尚未保存的正文')
     expect(withoutTime(await saveLocal(page))).toEqual(withoutTime(before))
   }

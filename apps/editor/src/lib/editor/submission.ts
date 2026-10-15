@@ -14,6 +14,8 @@ export interface SubmissionFailure {
   message: string
   details: string[]
   retrySafe: boolean
+  failureCode?: string
+  failureStage?: string
 }
 
 export type SubmissionUiState =
@@ -67,6 +69,8 @@ function parseFailure(value: unknown): SubmissionFailure {
     status: 'error',
     code,
     message: ERROR_MESSAGES[code] ?? ERROR_MESSAGES.SUBMISSION_FAILED,
+    ...(typeof error.failureCode === 'string' && /^[A-Z_]+$/.test(error.failureCode) ? { failureCode: error.failureCode } : {}),
+    ...(typeof error.failureStage === 'string' ? { failureStage: error.failureStage } : {}),
     details,
     retrySafe,
   }

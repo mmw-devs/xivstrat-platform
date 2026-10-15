@@ -1,6 +1,7 @@
 import { normalizeStructure, stampOperation, validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
 
 import type { SubmissionResult } from '../github/submission.ts'
+import { submissionFailureCode } from '../github/failure.ts'
 import { GitHubIntegrationError, type SubmissionFailureContext } from '../github/types.ts'
 
 export type SubmissionCreator = (structure: StrategyStructure) => Promise<SubmissionResult>
@@ -27,6 +28,8 @@ interface HttpErrorBody {
     message: string
     details?: string[]
     retrySafe?: false
+    failureCode?: string
+    failureStage?: string
   }
 }
 
@@ -85,6 +88,7 @@ function safeLogFields(error: GitHubIntegrationError): SafeSubmissionErrorLog {
 }
 
 function githubErrorResponse(error: GitHubIntegrationError): Response {
+  const failure = { failureCode: submissionFailureCode(error), failureStage: error.diagnostic?.stage }
   if (error.code === 'INVALID_STRATEGY_NAME' || error.code === 'UNSAFE_TARGET_PATH') {
     return errorResponse(422, {
       code: 'INVALID_SUBMISSION',
@@ -95,6 +99,7 @@ function githubErrorResponse(error: GitHubIntegrationError): Response {
   if (hasUnknownOutcome(error.submissionContext)) {
     return errorResponse(502, {
       code: 'SUBMISSION_OUTCOME_UNKNOWN',
+      ...failure,
       message: '无法确认提交结果，请勿立即重复提交并联系维护者',
       retrySafe: false,
     })
@@ -109,6 +114,7 @@ function githubErrorResponse(error: GitHubIntegrationError): Response {
   ])
   return errorResponse(unavailableCodes.has(error.code) ? 503 : 502, {
     code: unavailableCodes.has(error.code) ? 'SUBMISSION_UNAVAILABLE' : 'SUBMISSION_FAILED',
+    ...failure,
     message: '提交失败，请稍后重试或联系维护者',
   })
 }

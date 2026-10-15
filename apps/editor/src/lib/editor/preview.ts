@@ -1,7 +1,9 @@
 import { renderRichText, SECTION_RULES, type StrategyStructure, type ContentBlock, type StrategySection, type StrategyMechanic } from '@xivstrat/content-schema'
 import { el } from '../ui/dom'
-export function renderPreview(structure: StrategyStructure, target: HTMLElement, onLoadDemo: () => void): void {
+export function renderPreview(structure: StrategyStructure, target: HTMLElement, onLoadDemo: () => void, resolveImage: (path: string) => string | undefined = () => undefined): void {
   target.innerHTML = ''
+  const banner = resolveImage(structure.metadata.banner) ?? (/^https?:\/\//i.test(structure.metadata.banner) ? structure.metadata.banner : undefined)
+  if (banner) target.append(el('img', { src: banner, alt: '攻略封面', style: 'max-width:100%;height:auto' }))
   if (!structure.phases.length) {
     target.append(
       el(
@@ -16,8 +18,13 @@ export function renderPreview(structure: StrategyStructure, target: HTMLElement,
   }
   const showContent = (container: HTMLElement, content: ContentBlock[]): void => {
     content.forEach((item) => {
-      if (item.type === 'image')
-        container.append(el('span', { class: 'img-chip' }, `🖼 ${item.file}${item.caption ? ` · ${item.caption}` : ''}`))
+      if (item.type === 'image') {
+        const url = resolveImage(item.file) ?? (/^https?:\/\//i.test(item.file) ? item.file : undefined)
+        if (url) container.append(el('figure', {}, el('a', { href: url, target: '_blank', rel: 'noopener noreferrer' },
+          el('img', { src: url, alt: item.caption || '攻略图片', loading: 'lazy', style: 'max-width:100%;height:auto' })),
+          el('figcaption', {}, item.caption)))
+        else container.append(el('span', { class: 'img-chip' }, `图片未加载：${item.file}`))
+      }
       else {
         const text = el('div', {})
         text.innerHTML = renderRichText(item.doc)

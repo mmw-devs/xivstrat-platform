@@ -25,6 +25,15 @@ const config = {
   baseBranch: 'main',
 }
 
+test('managed image references cannot create a JSON-only GitHub submission', async () => {
+  let contacted = false
+  const submit = createSubmissionService(async () => { contacted = true; throw new Error('must not reach GitHub') })
+  const imageDraft = structuredClone(structure)
+  imageDraft.metadata.banner = `assets/images/${'a'.repeat(64)}.webp`
+  await assert.rejects(submit(imageDraft), (error: unknown) => error instanceof GitHubIntegrationError && error.code === 'UNSAFE_TARGET_PATH')
+  assert.equal(contacted, false)
+})
+
 function expectCode(action: () => unknown, code: string): void {
   assert.throws(action, (error) => error instanceof GitHubIntegrationError && error.code === code)
 }
@@ -91,6 +100,7 @@ test('missing file creates a new file with canonical JSON on a fresh content bra
   assert.equal('sha' in write.parameters, false)
   assert.equal(Buffer.from(String(write.parameters.content), 'base64').toString('utf8'), structureToJson({ ...structure, metadata: { ...structure.metadata, publish_time: result.publishTime } }))
   assert.equal(pull.parameters.base, 'main')
+  assert.equal(pull.parameters.title, '[XivStrat Editor] submission-test')
   assert.equal(pull.parameters.head, result.branch)
   assert.equal(result.commitSha, 'commit-sha')
   assert.equal(result.headSha, 'commit-sha')

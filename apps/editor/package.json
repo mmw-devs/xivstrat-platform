@@ -12,6 +12,9 @@
     "submission:http:test": "node --experimental-strip-types --test src/server/submissions/http.test.ts",
     "submission:ui:test": "node --experimental-strip-types --test src/lib/editor/submission.test.ts",
     "submission:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/submission-server.ts",
+    "upload:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/upload-server.ts",
+    "upload:test": "node --experimental-strip-types --test src/server/uploads/uploads.test.ts",
+    "images:submission:test": "node --experimental-strip-types --test src/server/github/image-submission.test.ts src/server/uploads/uploads.test.ts",
     "preview": "astro preview",
     "proofread:dev": "node --experimental-strip-types --env-file-if-exists=../../.env scripts/proofread-server.ts",
     "richtext:test": "node --experimental-strip-types --test src/lib/proofread/contracts.test.ts src/lib/proofread/panel.test.ts src/server/proofread/service.test.ts src/lib/richtext/schema.test.ts src/lib/richtext/replacement.test.ts",
@@ -38,12 +41,16 @@
     "@tiptap/react": "3.31.3",
     "@xivstrat/content-schema": "workspace:*",
     "astro": "6.1.5",
+    "busboy": "^1.6.0",
+    "fflate": "^0.8.3",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "sharp": "0.34.5"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.8",
     "@playwright/test": "^1.63.0",
+    "@types/busboy": "^1.5.4",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

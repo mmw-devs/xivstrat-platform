@@ -14,3 +14,4 @@ build/
 # Browser regression artifacts
 playwright-report/
 test-results/
+.local-data/

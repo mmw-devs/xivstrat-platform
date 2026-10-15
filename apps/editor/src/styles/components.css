@@ -1,5 +1,6 @@
 /* Shared primitives own internal spacing; parents own placement and outside spacing. */
-.btn {
+.btn,
+input[type="file"]::file-selector-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -14,7 +15,8 @@
   cursor: pointer;
   text-decoration: none;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled),
+input[type="file"]:not(:disabled)::file-selector-button:hover {
   background: var(--surface-hover);
   border-color: var(--color-primary-border);
 }
@@ -38,9 +40,13 @@
   padding: var(--space-2) var(--space-4);
   font-size: var(--type-caption-size);
 }
-.btn:disabled {
+.btn:disabled,
+input[type="file"]:disabled::file-selector-button {
   opacity: var(--opacity-disabled);
   cursor: default;
+}
+input[type="file"]::file-selector-button {
+  margin-inline-end: var(--space-6);
 }
 .field-label {
   display: block;

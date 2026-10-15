@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { hasManagedImages } from '../../lib/editor/image-references.ts'
 
 import { structureToJson, stampOperation, validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
 
@@ -15,6 +16,7 @@ import { safeGitHubApiDiagnostic, type InstallationOctokit } from './app.ts'
 
 const STRATEGY_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const TARGET_DIRECTORY = 'content/strategies/'
+export function editorSubmissionTitle(name: string): string { return `[XivStrat Editor] ${name}` }
 
 export interface SubmissionResult {
   submissionId: string
@@ -103,7 +105,7 @@ function failedWriteOutcome(error: unknown): OperationOutcome {
   return status && status >= 400 && status < 500 ? 'not-performed' : 'unknown'
 }
 
-async function productionRuntime(): Promise<SubmissionRuntime> {
+export async function productionRuntime(): Promise<SubmissionRuntime> {
   const config = loadGitHubConfig()
   const { app } = await verifyAppIdentity(config)
   await verifyInstallationIdentity(app, config)
@@ -120,6 +122,7 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
     structure = stampOperation(structure)
     const errors = validateStructure(structure)
     if (errors.length) throw inputError('INVALID_STRATEGY_NAME', errors.join('; '))
+    if (hasManagedImages(structure)) throw inputError('UNSAFE_TARGET_PATH', '图片投稿尚未接入，请勿只提交本地图片路径')
     const strategyName = validateStrategyName(structure.metadata.name)
     const filePath = strategyFilePath(strategyName)
     const content = Buffer.from(structureToJson(structure), 'utf8').toString('base64')
@@ -200,7 +203,7 @@ export function createSubmissionService(runtimeFactory: SubmissionRuntimeFactory
       const pullRequest = await octokit.request('POST /repos/{owner}/{repo}/pulls', {
         owner: config.owner,
         repo: config.repo,
-        title: `content: submit ${strategyName}`,
+        title: editorSubmissionTitle(strategyName),
         body: `Strategy name: ${strategyName}\nFile: ${filePath}\nSubmission ID: ${submissionId}`,
         head: branch,
         base: config.baseBranch,
