@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { normalizeStructure, plainTextDocument, type StrategyStructure } from '@xivstrat/content-schema'
+import { createEmptyStructure, normalizeStructure, plainTextDocument, type StrategyStructure } from '@xivstrat/content-schema'
 import { importStructure, isolateNetwork, saveLocal } from './helpers'
 
 const metadata = {
-  id: 'browser-test', name: '浏览器测试副本', short_name: '测试', type: 'other' as const,
-  title: '当前攻略标题', description: '状态链路回归', banner: 'banners/test.webp',
-  publish_time: '26/09/18 12:00', status: 'draft' as const, video: '', team: '测试组',
+  ...createEmptyStructure().metadata, name: 'browser-test', type: 'other' as const,
+  title: '当前攻略标题', banner: 'banners/test.webp',
 }
-const fields = { id: 'inp-id', name: 'inp-name', short_name: 'inp-short', title: 'inp-title', description: 'inp-desc', banner: 'inp-banner', publish_time: 'inp-date', team: 'inp-group' } as const
+const fields = { name: 'inp-name', title: 'inp-title', banner: 'inp-banner' } as const
 
 test.beforeEach(async ({ page }) => { await isolateNetwork(page); await page.goto('/editor/') })
 
@@ -27,11 +26,9 @@ test('actual form, Tiptap edits and block ordering reach preview, local save and
   for (const [field, id] of Object.entries(fields)) await page.locator(`#${id}`).fill(metadata[field as keyof typeof fields])
   await page.locator('#inp-type').selectOption('other')
   await page.locator('[data-step="3"]').click()
-  await page.getByLabel('阶段 id（如 p1）', { exact: false }).fill('p1')
-  await page.getByLabel('阶段名称（如 前半）', { exact: false }).fill('前半')
+  await page.getByLabel('阶段名称', { exact: false }).fill('p1-前半')
   await page.getByRole('button', { name: '＋ 添加机制', exact: true }).click()
   await page.getByLabel('机制名称', { exact: false }).fill('测试机制')
-  await page.getByLabel('编号（英文小写+短横线，本阶段唯一）', { exact: false }).fill('mechanic')
   await page.getByRole('button', { name: '＋ 添加区块', exact: true }).click()
   await page.getByLabel('区块类型').selectOption('note')
   const section = page.locator('.section-box')
@@ -43,8 +40,8 @@ test('actual form, Tiptap edits and block ordering reach preview, local save and
   await page.getByRole('textbox', { name: '攻略正文', exact: true }).nth(1).fill('第一段修改后')
   await page.locator('[data-step="5"]').click()
   await expect(page.locator('#preview .paragraph')).toHaveText(['第二段', '第一段修改后'])
-  const expected = { schemaVersion: 2, metadata, references: [], macros: [], phases: [{
-    id: 'p1', name: '前半', mechanics: [{ id: 'mechanic', name: '测试机制', sub_mechanics: [], sections: [{
+  const expected = { metadata: { ...metadata, publish_time: expect.any(String) }, references: [], macros: [], phases: [{
+    name: 'p1-前半', mechanics: [{ name: '测试机制', sub_mechanics: [], sections: [{
       type: 'note', title: '', content: ['第二段', '第一段修改后'].map(text => ({ type: 'text', id: expect.any(String), doc: plainTextDocument([text]) })),
     }] }],
   }] }
@@ -54,13 +51,13 @@ test('actual form, Tiptap edits and block ordering reach preview, local save and
   await expect(page.locator('#submission-status')).toContainText('提交成功')
   expect(requests).toEqual([saved])
   await importStructure(page, saved)
-  expect(await saveLocal(page)).toEqual(saved)
+  expect(withoutTime(await saveLocal(page))).toEqual(withoutTime(saved))
 })
 
 test('import then edit metadata and rich text submits the current document, not imported or cached data', async ({ page }) => {
   const requests = await mockSubmission(page)
-  const original = normalizeStructure({ metadata, phases: [{ id: 'p1', name: '导入阶段', mechanics: [{
-    id: 'm1', name: '导入机制', sections: [{ type: 'note', title: '', content: [{ type: 'text', id: 'body-import', doc: plainTextDocument(['导入原文']) }] }],
+  const original = normalizeStructure({ ...createEmptyStructure(), metadata, phases: [{ name: 'p1-导入阶段', mechanics: [{
+    name: '导入机制', sub_mechanics: [], sections: [{ type: 'note', title: '', content: [{ type: 'text', id: 'body-import', doc: plainTextDocument(['导入原文']) }] }],
   }] }] })
   await importStructure(page, original)
   await expect(page.locator('#preview')).toContainText('导入原文')
@@ -78,7 +75,7 @@ test('import then edit metadata and rich text submits the current document, not 
   await page.getByRole('button', { name: '提交审核', exact: true }).click()
   await expect(page.locator('#submission-status')).toContainText('提交成功')
   expect(requests).toEqual([expected])
-  expect(await saveLocal(page)).toEqual(expected)
+  expect(withoutTime(await saveLocal(page))).toEqual(withoutTime(expected))
 })
 
 test('rejected unrelated JSON preserves unsaved editor content and subsequent submission', async ({ page }) => {
@@ -96,9 +93,58 @@ test('rejected unrelated JSON preserves unsaved editor content and subsequent su
     await page.getByRole('button', { name: '导入已有攻略', exact: true }).click()
     await expect(page.locator('#import-status')).toContainText('导入失败')
     await expect(page.locator('#preview')).toContainText('误导入前尚未保存的正文')
-    expect(await saveLocal(page)).toEqual(before)
+    expect(withoutTime(await saveLocal(page))).toEqual(withoutTime(before))
   }
   await page.getByRole('button', { name: '提交审核', exact: true }).click()
   await expect(page.locator('#submission-status')).toContainText('提交成功')
-  expect(requests).toEqual([before])
+  expect(requests.map(withoutTime)).toEqual([withoutTime(before)])
+})
+
+function withoutTime(value: any) { return { ...value, metadata: { ...value.metadata, publish_time: '' } } }
+
+test('readonly operation fields, visible name conversion and imported status reset', async ({ page }, testInfo) => {
+  await page.locator('#inp-type').selectOption('ultimate')
+  await page.locator('#inp-name').fill('the epic of alexander')
+  await expect(page.locator('#inp-name')).toHaveValue('the-epic-of-alexander')
+  await expect(page.locator('#inp-status')).toHaveValue('draft')
+  await expect(page.locator('#inp-status')).toHaveAttribute('readonly','')
+  await expect(page.locator('#inp-date')).toHaveAttribute('readonly','')
+  await expect(page.locator('#inp-id, #inp-short, #inp-desc, #inp-group, #btn-sync-time')).toHaveCount(0)
+  const draft=createEmptyStructure();draft.metadata.name='the-epic-of-alexander';draft.metadata.type='ultimate';draft.metadata.status='review'
+  draft.metadata.publish_time='2000-01-01T00:00:00.000Z'
+  await importStructure(page,draft)
+  await expect(page.locator('#import-status')).toContainText('作为草稿编辑')
+  const saved=await saveLocal(page)
+  expect(saved.metadata.status).toBe('draft')
+  expect(Date.parse(saved.metadata.publish_time)).toBeGreaterThan(Date.parse(draft.metadata.publish_time))
+  await page.locator('[data-step="1"]').click()
+  await expect(page.locator('#inp-date')).toHaveValue(saved.metadata.publish_time)
+  await page.locator('#inp-name').fill('another-name')
+  await expect(page.locator('#name-warning')).toContainText('原文件不会重命名')
+  await page.screenshot({path:testInfo.outputPath('metadata-fields.png'),fullPage:true})
+})
+
+test('numeric phase reordering preserves live body and id; invalid values block submission', async ({ page }) => {
+  const requests=await mockSubmission(page)
+  const draft=createEmptyStructure();draft.metadata={...metadata}
+  draft.macros=[{name:'站位',code:' /p hello world\n/p second\tline'}]
+  draft.phases=['p2','p10'].map((name,i)=>({name,mechanics:[{name:'机制',sub_mechanics:[],sections:[{type:'note',title:'',content:[{type:'text',id:`stable-${i}`,doc:plainTextDocument([`正文${i}`])}]}]}]}))
+  await importStructure(page,draft)
+  await page.locator('[data-step="3"]').click()
+  const body=page.getByRole('textbox',{name:'攻略正文',exact:true}).nth(1)
+  await body.fill('移动后保留的正文')
+  await page.getByLabel('阶段名称',{exact:false}).nth(1).fill('p1.5-转场')
+  expect(await page.getByLabel('阶段名称',{exact:false}).evaluateAll(nodes=>nodes.map(n=>(n as HTMLInputElement).value))).toEqual(['p1.5-转场','p2'])
+  await expect(page.getByLabel('阶段名称',{exact:false}).first()).toBeFocused()
+  await expect(page.getByRole('textbox',{name:'攻略正文',exact:true}).first()).toHaveText('移动后保留的正文')
+  await page.locator('[data-step="5"]').click()
+  const saved=await saveLocal(page)
+  expect(saved.phases[0].mechanics[0].sections[0].content[0]).toMatchObject({type:'text',id:'stable-1'})
+  expect(saved.macros).toEqual(draft.macros)
+  await page.locator('[data-step="1"]').click()
+  await page.locator('#inp-title').fill('禁止 空格')
+  await page.locator('[data-step="5"]').click()
+  await page.getByRole('button',{name:'提交审核',exact:true}).click()
+  await expect(page.locator('#submission-status')).toContainText('metadata.title')
+  expect(requests).toHaveLength(0)
 })

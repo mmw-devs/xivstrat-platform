@@ -1,5 +1,5 @@
 import {
-  plainTextDocument, SECTION_TYPES, SECTION_RULES,
+  plainTextDocument, comparePhaseNames, SECTION_TYPES, SECTION_RULES,
   type ContentBlock, type StrategyStructure, type StrategyPhase,
   type StrategyMechanic, type StrategySection, type StrategyReference, type StrategyMacro,
 } from '@xivstrat/content-schema'
@@ -36,6 +36,16 @@ function createList<T>(host: HTMLElement, factory: Factory<T>, changed: () => vo
   }
   return {
     add,
+    sort(compare: (a: T, b: T) => number) {
+      const focused = document.activeElement
+      const selection = focused instanceof HTMLInputElement ? [focused.selectionStart, focused.selectionEnd] as const : undefined
+      state.sort((a, b) => compare(a.read(), b.read()))
+      state.values().forEach((item, index) => { if (host.children[index] !== item.root) host.insertBefore(item.root, host.children[index] ?? null) })
+      if (focused instanceof HTMLElement && host.contains(focused) && document.activeElement !== focused) {
+        focused.focus({ preventScroll: true })
+        if (focused instanceof HTMLInputElement && selection) focused.setSelectionRange(...selection)
+      }
+    },
     read: (): T[] => state.values().map(item => item.read()),
     replace(values: T[]) { state.values().forEach(remove); values.forEach(add); changed() },
     destroy() { state.values().forEach(remove) },
@@ -59,13 +69,12 @@ interface AuthoringOptions {
   macros: HTMLElement
   phases: HTMLElement
   changed(history?: boolean): void
-  focus(handle: BodyEditorHandle): void
-  released(handle: BodyEditorHandle): void
 }
 
 export function createAuthoring(options: AuthoringOptions) {
   const bodies = new Map<string, BodyEditorHandle>()
-  const changed = (): void => options.changed()
+  let sortPhaseItems = (): void => {}
+  const changed = (): void => { sortPhaseItems(); options.changed() }
 
   const content: Factory<ContentBlock> = (value, actions) => {
     const root = el('div', { class: 'block-row stack' })
@@ -77,19 +86,18 @@ export function createAuthoring(options: AuthoringOptions) {
       let file = value.file, caption = value.caption
       root.append(el('div', { class: 'row' },
         field('图片链接', file, next => { file = next; changed() }, { required: true, placeholder: '输入图片链接' }),
-        field('图片说明', caption, next => { caption = next; changed() }, { required: true, placeholder: '图片说明' })))
-      return { root, read: () => ({ type: 'image', file: file.trim(), caption: caption.trim() }), destroy() { } }
+        field('图片说明（可选）', caption, next => { caption = next; changed() }, { placeholder: '图片说明' })))
+      return { root, read: () => ({ type: 'image', file: file, caption: caption }), destroy() { } }
     }
     const id = value?.type === 'text' ? value.id : crypto.randomUUID()
     const host = el('div', { class: 'content-value' })
     root.append(el('div', { class: 'hint' }, '正文 · Enter 另起一段 · Shift + Enter 同段换行'), host)
     const handle = createBodyEditor(host, value?.type === 'text' ? value.doc : plainTextDocument([]), options.changed)
     bodies.set(id, handle)
-    host.addEventListener('focusin', () => options.focus(handle))
     return {
       root,
       read: () => ({ type: 'text', id, doc: handle.getDocument() }),
-      destroy() { bodies.delete(id); options.released(handle); handle.destroy() },
+      destroy() { bodies.delete(id); handle.destroy() },
     }
   }
 
@@ -119,61 +127,61 @@ export function createAuthoring(options: AuthoringOptions) {
       el('div', { class: 'actions' }, button('上移', () => actions.move(-1)), button('下移', () => actions.move(1)), button('删除区块', actions.remove, 'danger')),
       host, el('div', { class: 'actions' }, button('＋ 添加文字', () => children.add()), button('＋ 添加图片', () => children.add({ type: 'image', file: '', caption: '' }))))
     children.replace(value?.content ?? [])
-    return { root, read: () => ({ type, title: title.trim(), content: children.read() }), destroy: children.destroy }
+    return { root, read: () => ({ type, title: title, content: children.read() }), destroy: children.destroy }
   }
 
   const mechanic: Factory<StrategyMechanic> = (value, actions) => {
-    let id = value?.id ?? '', name = value?.name ?? ''
+    let name = value?.name ?? ''
     const root = el('div', { class: 'mech-box stack' })
     const sectionHost = el('div', { class: 'stack' }), subHost = el('div', { class: 'stack mt-2' })
     const sections = createList(sectionHost, section, changed)
     const subs = createList(subHost, mechanic, changed)
     const disclosure = el('details', { class: 'disclosure', open: Boolean(value?.sub_mechanics.length) }, el('summary', {}, '子机制列表'), subHost)
     root.append(el('div', { class: 'row' },
-      field('机制名称', name, next => { name = next; changed() }, { required: true, placeholder: '无之膨胀' }),
-      field('编号（英文小写+短横线，本阶段唯一）', id, next => { id = next; changed() }, { required: true, placeholder: 'expansion' })),
+      field('机制名称', name, next => { name = next; changed() }, { required: true, placeholder: '无之膨胀' })),
       el('div', { class: 'actions' }, button('删除机制', actions.remove, 'danger')),
       el('div', { class: 'hint' }, '内容区块（按顺序渲染）'), sectionHost,
       el('div', { class: 'actions' }, button('＋ 添加区块', () => sections.add()), button('＋ 子机制', () => { disclosure.open = true; subs.add() })), disclosure)
     sections.replace(value?.sections ?? [])
     subs.replace(value?.sub_mechanics ?? [])
-    return { root, read: () => ({ id: id.trim(), name: name.trim(), sections: sections.read(), sub_mechanics: subs.read() }), destroy() { sections.destroy(); subs.destroy() } }
+    return { root, read: () => ({ name: name, sections: sections.read(), sub_mechanics: subs.read() }), destroy() { sections.destroy(); subs.destroy() } }
   }
 
   const phase: Factory<StrategyPhase> = (value, actions) => {
-    let id = value?.id ?? '', name = value?.name ?? ''
+    let name = value?.name ?? ''
     const root = el('div', { class: 'card stack' })
     const host = el('div', { class: 'stack' }), children = createList(host, mechanic, changed)
     root.append(el('div', { class: 'head' }, el('div', {}, el('span', { class: 'phase-tag' }, 'Phase'), el('b', {}, '阶段')), button('删除阶段', actions.remove, 'danger')),
-      el('div', { class: 'grid2' }, field('阶段 id（如 p1）', id, next => { id = next; changed() }, { required: true, placeholder: 'p1' }), field('阶段名称（如 前半）', name, next => { name = next; changed() }, { required: true, placeholder: '前半' })),
+      el('div', {}, field('阶段名称', name, next => { name = next; changed() }, { required: true, placeholder: 'p1、p1-前半或p1.5-转场' })),
       host, el('div', { class: 'actions' }, button('＋ 添加机制', () => children.add())))
     children.replace(value?.mechanics ?? [])
-    return { root, read: () => ({ id: id.trim().toLowerCase(), name: name.trim(), mechanics: children.read() }), destroy: children.destroy }
+    return { root, read: () => ({ name: name, mechanics: children.read() }), destroy: children.destroy }
   }
   const reference: Factory<StrategyReference> = (value, actions) => {
     let label = value?.label ?? '', url = value?.url ?? ''
     const root = el('div', { class: 'row' },
       field('标题', label, next => { label = next; changed() }, { placeholder: '标题' }),
       field('链接', url, next => { url = next; changed() }, { placeholder: 'https://链接' }), button('删除', actions.remove, 'danger'))
-    return { root, read: () => ({ label: label.trim(), url: url.trim() }), destroy() { } }
+    return { root, read: () => ({ label: label, url: url }), destroy() { } }
   }
   const macro: Factory<StrategyMacro> = (value, actions) => {
     let name = value?.name ?? '', code = value?.code ?? ''
     const root = el('div', { class: 'card stack' },
       el('div', { class: 'row' }, field('名称', name, next => { name = next; changed() }, { placeholder: '站位方案' }), button('删除宏', actions.remove, 'danger')),
       field('代码（多行，如 /p 开头的宏）', code, next => { code = next; changed() }, { multiline: true, placeholder: '/p 第一行\n/p 第二行' }))
-    return { root, read: () => ({ name: name.trim(), code }), destroy() { } }
+    return { root, read: () => ({ name: name, code }), destroy() { } }
   }
   const references = createList(options.references, reference, changed)
   const macros = createList(options.macros, macro, changed)
   const phases = createList(options.phases, phase, changed)
+  sortPhaseItems = () => phases.sort((a, b) => comparePhaseNames(a.name, b.name))
   return {
     addReference: () => references.add(), addMacro: () => macros.add(), addPhase: () => phases.add(),
     findBody: (id: string) => bodies.get(id),
     read: (): Pick<StrategyStructure, 'references' | 'macros' | 'phases'> => ({
       references: references.read().filter(value => value.label || value.url),
       macros: macros.read().filter(value => value.name || value.code),
-      phases: phases.read().filter(value => value.id || value.name || value.mechanics.length),
+      phases: phases.read().filter(value => value.name || value.mechanics.length),
     }),
     replace(value: StrategyStructure) { references.replace(value.references); macros.replace(value.macros); phases.replace(value.phases) },
     destroy() { references.destroy(); macros.destroy(); phases.destroy() },

@@ -1,19 +1,8 @@
----
-import CosSettings from './CosSettings.astro'
-import ImageLibrary from './ImageLibrary.astro'
-import GameSearch from './GameSearch.astro'
----
 <section class="panel" id="step5">
     <p id="import-status" class="hint feedback" role="status" aria-live="polite"></p>
     <div class="actions">
       <button id="btn-load-demo" class="btn">🎲 载入示例</button>
     </div>
-
-    <CosSettings />
-
-    <ImageLibrary />
-
-    <GameSearch />
 
     <h2 class="sec">校验结果 <span id="vbadge"></span></h2>
     <ul class="vlist" id="vlist"></ul>
@@ -35,6 +24,6 @@ import GameSearch from './GameSearch.astro'
 
 
     <h2 class="sec mt-4">导入已有攻略（JSON）</h2>
-    <textarea class="code field-input" id="importArea" placeholder="粘贴已有攻略 JSON（兼容旧版数据），然后点击导入"></textarea>
+    <textarea class="code field-input" id="importArea" placeholder="粘贴已有攻略 JSON（当前字段格式），然后点击导入"></textarea>
     <div class="mt-2"><button id="btn-import-template" class="btn primary">导入已有攻略</button></div>
   </section>

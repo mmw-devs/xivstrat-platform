@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { normalizeStructure, validateStructure, SECTION_RULES } from '@xivstrat/content-schema'
+import { createEmptyStructure, validateStructure, SECTION_RULES } from '@xivstrat/content-schema'
 import { createOrderedList } from './ordered-list.ts'
+import { createDemo } from './demo.ts'
 import { createSnapshotCache } from './snapshot.ts'
 
 test('nested list order changes without rebuilding live body handles', () => {
@@ -30,27 +31,27 @@ test('consumers cannot mutate list order through a returned array', () => {
 })
 test('preview caches content and validation until an edit invalidates it', () => {
   let reads = 0
-  let source = normalizeStructure({ metadata: { id: 'first' } })
+  const source = createEmptyStructure(); source.metadata.name = 'first'
   const cache = createSnapshotCache(() => { reads++; return structuredClone(source) })
   cache.invalidate(); cache.invalidate()
   assert.equal(reads, 0)
   const first = cache.get()
   assert.equal(cache.get(), first)
   assert.equal(reads, 1)
-  source.metadata.id = 'second'
+  source.metadata.name = 'second'
   cache.invalidate()
   assert.equal(reads, 1)
   const second = cache.get()
   assert.equal(reads, 2)
-  assert.equal(first.structure.metadata.id, 'first')
-  assert.equal(second.structure.metadata.id, 'second')
+  assert.equal(first.structure.metadata.name, 'first')
+  assert.equal(second.structure.metadata.name, 'second')
 })
 test('section title validation uses the same business rules as editing and preview', () => {
   for (const type of ['mechanic', 'solution', 'note'] as const) {
-    const structure = normalizeStructure({ phases: [{ id: 'p1', name: '阶段', mechanics: [{ id: 'm', name: '机制', sections: [{ type, title: '', content: [{ type: 'text', value: ['正文'] }] }] }] }] })
+    const structure = createDemo(); structure.phases[0].mechanics[0].sections = [{ type, title: '', content: structure.phases[0].mechanics[0].sections[0].content }]
     const errors = validateStructure(structure)
-    const titleErrors = errors.filter(error => error.includes('标题'))
+    const titleErrors = errors.filter(error => error.includes('.sections[0].title'))
     // Metadata has its own missing title; compare the section path only.
-    assert.equal(titleErrors.some(error => error.includes('阶段')), SECTION_RULES[type].titleRequired)
+    assert.equal(titleErrors.length > 0, SECTION_RULES[type].titleRequired)
   }
 })

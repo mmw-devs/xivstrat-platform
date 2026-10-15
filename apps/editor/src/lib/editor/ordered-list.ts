@@ -3,6 +3,7 @@ export function createOrderedList<T>() {
   const items: T[] = []
   return {
     values: (): readonly T[] => [...items],
+    sort(compare: (a: T, b: T) => number): void { items.sort(compare) },
     add(item: T): void { items.push(item) },
     remove(item: T): boolean {
       const index = items.indexOf(item)

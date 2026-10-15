@@ -5,6 +5,7 @@ export interface SubmissionSuccess {
   prNumber: number
   prUrl: string
   submissionId: string
+  publishTime?: string
 }
 
 export interface SubmissionFailure {
@@ -41,7 +42,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   SUBMISSION_UNAVAILABLE: '提交服务暂不可用，请稍后再试',
   SUBMISSION_FAILED: '提交失败，请稍后再试或联系维护者',
   SUBMISSION_OUTCOME_UNKNOWN: '无法确认本次提交是否成功，请不要立即重复提交，并联系维护者确认',
-  NETWORK_ERROR: '网络请求失败，请检查连接后稍后再试',
+  NETWORK_ERROR: '网络中断，无法确认远端结果，请先核实再提交',
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -50,9 +51,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseSuccess(value: unknown): SubmissionSuccess | null {
   if (!isRecord(value) || value.ok !== true || !isRecord(value.submission)) return null
-  const { prNumber, prUrl, submissionId } = value.submission
+  const { prNumber, prUrl, submissionId, publishTime } = value.submission
   if (typeof prNumber !== 'number' || typeof prUrl !== 'string' || typeof submissionId !== 'string') return null
-  return { status: 'success', prNumber, prUrl, submissionId }
+  return { status: 'success', prNumber, prUrl, submissionId, ...(typeof publishTime === 'string' ? { publishTime } : {}) }
 }
 
 function parseFailure(value: unknown): SubmissionFailure {
@@ -112,7 +113,7 @@ export function createSubmissionController(options: SubmissionControllerOptions)
         code: 'NETWORK_ERROR',
         message: ERROR_MESSAGES.NETWORK_ERROR,
         details: [],
-        retrySafe: true,
+        retrySafe: false,
       })
     } finally {
       pending = null

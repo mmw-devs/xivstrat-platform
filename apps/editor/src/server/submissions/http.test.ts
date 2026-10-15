@@ -1,7 +1,8 @@
+import { createDemo } from '../../lib/editor/demo.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import type { StrategyStructure } from '@xivstrat/content-schema'
+import { createEmptyStructure, type StrategyStructure } from '@xivstrat/content-schema'
 
 import type { SubmissionResult } from '../github/submission.ts'
 import { GitHubIntegrationError } from '../github/types.ts'
@@ -11,30 +12,14 @@ import {
   type SubmissionCreator,
 } from './http.ts'
 
-const rawSubmission = {
-  schemaVersion: 1,
-  metadata: {
-    id: 'http-test',
-    name: 'HTTP Test',
-    short_name: 'Test',
-    type: 'other',
-    title: 'HTTP Submission Test',
-    description: 123,
-    banner: 'banners/test.webp',
-    publish_time: '2026-09-11',
-    status: 'draft',
-    video: '',
-    team: 'XivStrat Test',
-  },
-  references: [],
-  macros: [],
-  phases: [{ id: 'p1', name: 'Phase 1', mechanics: [] }],
-  untrusted: 'discard me',
-}
+const rawSubmission = createDemo()
+rawSubmission.metadata.name = 'http-test'
+rawSubmission.metadata.type = 'other'
 
 const submissionResult: SubmissionResult = {
   submissionId: '00000000-0000-4000-8000-000000000001',
-  strategyId: 'http-test',
+  strategyName: 'http-test',
+  publishTime: '2026-10-03T00:00:00.000Z',
   filePath: 'content/strategies/http-test.json',
   branch: 'content/00000000-0000-4000-8000-000000000001',
   commitSha: 'commit-sha',
@@ -145,7 +130,7 @@ test('normalization failures return 400 without invoking createSubmission', asyn
 
 test('validation failures return safe messages with 422 and do not submit', async () => {
   let calls = 0
-  const response = await handleSubmissionRequest(jsonRequest({}), dependencies(async () => {
+  const response = await handleSubmissionRequest(jsonRequest(createEmptyStructure()), dependencies(async () => {
     calls += 1
     return submissionResult
   }))
@@ -155,7 +140,7 @@ test('validation failures return safe messages with 422 and do not submit', asyn
   assert.equal(calls, 0)
   assert.equal(body.error.code, 'INVALID_SUBMISSION')
   assert.ok(Array.isArray(body.error.details))
-  assert.ok(body.error.details.includes('基本信息 > 编号：未填写'))
+  assert.ok(body.error.details.includes('metadata.name：未填写'))
 })
 
 test('valid input is normalized before createSubmission and returns the safe result with 201', async () => {
@@ -171,8 +156,9 @@ test('valid input is normalized before createSubmission and returns the safe res
   assert.equal(body.ok, true)
   assert.deepEqual(body.submission, submissionResult)
   assert.doesNotMatch(JSON.stringify(body), /must-not-leak|internalToken/)
-  assert.equal(submitted?.schemaVersion, 2)
-  assert.equal(submitted?.metadata.description, '123')
+  assert.equal(Object.hasOwn(submitted ?? {}, 'schemaVersion'), false)
+  assert.match(submitted?.metadata.publish_time ?? '', /^\d{4}-.*Z$/)
+  assert.equal(submitted?.metadata.name, 'http-test')
   assert.equal(Object.hasOwn(submitted ?? {}, 'untrusted'), false)
 })
 
@@ -266,4 +252,28 @@ test('unexpected errors return a generic 500 without leaking their message', asy
   assert.equal(response.status, 500)
   assert.match(serialized, /SUBMISSION_FAILED/)
   assert.doesNotMatch(serialized, /secret unexpected failure/)
+})
+
+test('service clock replaces client time and normalized name determines identity', async () => {
+  const raw=structuredClone(rawSubmission)
+  raw.metadata.name='the epic of alexander'; raw.metadata.type='ultimate'
+  raw.metadata.publish_time='not-a-client-timestamp'
+  const before=Date.now()
+  let received: StrategyStructure | undefined
+  const response=await handleSubmissionRequest(jsonRequest(raw),dependencies(async value=>{received=value;return submissionResult}))
+  assert.equal(response.status,201)
+  assert.equal(received?.metadata.name,'the-epic-of-alexander')
+  assert.ok(Date.parse(received!.metadata.publish_time)>=before)
+  assert.ok(Date.parse(received!.metadata.publish_time)<=Date.now())
+  assert.equal((await response.json()).submission.strategyName,'http-test')
+})
+
+test('review and done cannot bypass draft-only submission', async () => {
+  for(const status of ['review','done'] as const) {
+    const raw=structuredClone(rawSubmission);raw.metadata.status=status
+    let calls=0
+    const response=await handleSubmissionRequest(jsonRequest(raw),dependencies(async()=>{calls++;return submissionResult}))
+    assert.equal(response.status,422);assert.equal(calls,0)
+    assert.ok((await response.json()).error.details.some((v:string)=>v.includes('metadata.status')))
+  }
 })

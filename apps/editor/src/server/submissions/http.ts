@@ -1,4 +1,4 @@
-import { normalizeStructure, validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
+import { normalizeStructure, stampOperation, validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
 
 import type { SubmissionResult } from '../github/submission.ts'
 import { GitHubIntegrationError, type SubmissionFailureContext } from '../github/types.ts'
@@ -47,7 +47,8 @@ function errorResponse(status: number, error: HttpErrorBody['error'], headers?: 
 function safeSubmissionResult(result: SubmissionResult): SubmissionResult {
   return {
     submissionId: result.submissionId,
-    strategyId: result.strategyId,
+    strategyName: result.strategyName,
+    publishTime: result.publishTime,
     filePath: result.filePath,
     branch: result.branch,
     commitSha: result.commitSha,
@@ -84,7 +85,7 @@ function safeLogFields(error: GitHubIntegrationError): SafeSubmissionErrorLog {
 }
 
 function githubErrorResponse(error: GitHubIntegrationError): Response {
-  if (error.code === 'INVALID_STRATEGY_ID' || error.code === 'UNSAFE_TARGET_PATH') {
+  if (error.code === 'INVALID_STRATEGY_NAME' || error.code === 'UNSAFE_TARGET_PATH') {
     return errorResponse(422, {
       code: 'INVALID_SUBMISSION',
       message: '提交内容未通过验证',
@@ -150,7 +151,7 @@ export async function handleSubmissionRequest(
 
   let structure: StrategyStructure
   try {
-    structure = normalizeStructure(raw)
+    structure = stampOperation(normalizeStructure(raw))
   } catch {
     return errorResponse(400, {
       code: 'NORMALIZATION_ERROR',

@@ -32,7 +32,7 @@ export interface Suggestion extends ModelSuggestion {
 export function snapshotBlocks(structure: StrategyStructure): SnapshotBlock[] {
   const blocks: SnapshotBlock[] = []
   const visit = (mechanic: StrategyMechanic, path: string[]): void => {
-    const current = [...path, mechanic.id, mechanic.name]
+    const current = [...path, mechanic.name]
     mechanic.sections.forEach((section) =>
       section.content.forEach((block) => {
         if (block.type === 'text')
@@ -46,7 +46,7 @@ export function snapshotBlocks(structure: StrategyStructure): SnapshotBlock[] {
     mechanic.sub_mechanics.forEach((child) => visit(child, current))
   }
   structure.phases.forEach((phase) =>
-    phase.mechanics.forEach((mechanic) => visit(mechanic, [phase.id, phase.name])),
+    phase.mechanics.forEach((mechanic) => visit(mechanic, [phase.name])),
   )
   return blocks
 }
@@ -198,8 +198,7 @@ export function rebaseSuggestions(suggestions: Suggestion[], accepted: Suggestio
 export function snapshotLabel(path: string[]): string {
   const labels: Record<string, string> = { mechanic: '机制', solution: '解法', note: '注意' }
   return [
-    path.slice(0, 2).filter(Boolean).join(' · '),
-    ...path.slice(2, -2).filter((_part, i) => i % 2 === 1),
+    ...path.slice(0, -2),
     labels[path.at(-2) ?? ''] ?? '',
     path.at(-1) ?? '',
   ]

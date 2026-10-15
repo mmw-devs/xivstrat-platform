@@ -2,21 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { normalizeStructure, structureToJson } from '@xivstrat/content-schema'
 import { parseRichText, plainTextDocument, richTextLines, renderRichText } from '@xivstrat/content-schema'
-const legacy = {
-  phases: [
-    {
-      mechanics: [
-        {
-          sections: [
-            { type: 'note', content: [{ type: 'text', value: [' 奶妈先处理。 ', '', 'H1 保留。'] }] },
-          ],
-        },
-      ],
-    },
-  ],
-}
-test('legacy migrates to stable v2 document; JSON round-trip preserves formatting', () => {
-  const structure = normalizeStructure(legacy)
+import { createDemo } from '../editor/demo.ts'
+test('richtext uses stable body ids; JSON round-trip preserves formatting', () => {
+  const structure = createDemo()
   const block = structure.phases[0]!.mechanics[0]!.sections[0]!.content[0]!
   assert.equal(block.type, 'text')
   if (block.type !== 'text') return
@@ -26,7 +14,7 @@ test('legacy migrates to stable v2 document; JSON round-trip preserves formattin
     marks: [{ type: 'bold' }, { type: 'textStyle', attrs: { color: '#f87171', fontSize: '20px' } }],
   }
   assert.deepEqual(normalizeStructure(JSON.parse(structureToJson(structure))), structure)
-  assert.equal(structure.schemaVersion, 2)
+  assert.equal(Object.hasOwn(structure, 'schemaVersion'), false)
   assert.equal('value' in block, false)
 })
 test('rejects unknown nodes, attributes and arbitrary styles', () => {
@@ -102,17 +90,17 @@ test('all toolbar marks survive JSON and safe rendering; unsafe links are reject
   }
 })
 
-test('v2 duplicate body ids cannot corrupt proofreading targeting', () => {
-  const structure = normalizeStructure(legacy)
+test('duplicate body ids cannot corrupt proofreading targeting', () => {
+  const structure = createDemo()
   const section = structure.phases[0]!.mechanics[0]!.sections[0]!
   section.content.push(structuredClone(section.content[0]!))
   assert.throws(() => normalizeStructure(structure))
 })
 
-test('legacy migration enforces v2 limits and valid boundary data remains serializable', () => {
-  const withLines = (value: string[]) => ({
-    phases: [{ mechanics: [{ sections: [{ type: 'note', content: [{ type: 'text', value }] }] }] }],
-  })
+test('richtext enforces document limits and valid boundary data remains serializable', () => {
+  const withLines = (lines: string[]) => {
+    const draft=createDemo();draft.phases[0].mechanics[0].sections[0].content=[{type:'text',id:'body',doc:plainTextDocument(lines)}];return draft
+  }
   for (const lines of [Array<string>(5001).fill('x'), ['x'.repeat(200001)]]) {
     assert.throws(() => normalizeStructure(withLines(lines)))
   }

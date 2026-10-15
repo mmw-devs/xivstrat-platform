@@ -1,14 +1,14 @@
-import { structureToJson, type StrategyStructure } from '@xivstrat/content-schema'
+import { structureToJson, stampOperation, isValidDutyName, type StrategyStructure } from '@xivstrat/content-schema'
 import { errorMessage, type ElementLookup } from '../ui/dom'
 
 /** Temporary local backup, independent of submission availability and validation. */
-export function mountLocalSave(byId: ElementLookup, collect: () => StrategyStructure, signal: AbortSignal): void {
+export function mountLocalSave(byId: ElementLookup, collect: () => StrategyStructure, signal: AbortSignal, onSaved?: (time: string) => void): void {
   byId('btn-save-local').addEventListener('click', () => {
     const status = byId('local-save-status')
     try {
-      const structure = collect()
+      const structure = stampOperation(collect())
       const json = structureToJson(structure)
-      const name = structure.metadata.id.replace(/[^a-z0-9-]/gi, '-').slice(0, 80) || 'strategy-draft'
+      const name = isValidDutyName(structure.metadata.name, structure.metadata.type) ? structure.metadata.name : 'strategy-draft'
       const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }))
       const anchor = document.createElement('a')
       anchor.href = url
@@ -16,6 +16,7 @@ export function mountLocalSave(byId: ElementLookup, collect: () => StrategyStruc
       document.body.append(anchor)
       try {
         anchor.click()
+        onSaved?.(structure.metadata.publish_time)
         status.textContent = '已发起 JSON 下载，请确认文件已保存；后续修改需要再次保存。'
       } finally {
         anchor.remove()

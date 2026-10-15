@@ -1,7 +1,7 @@
 import { createSubmissionController, submissionCanStart, type SubmissionController, type SubmissionUiState } from './submission'
 import { el, type ElementLookup } from '../ui/dom'
-import type { StrategyStructure } from '@xivstrat/content-schema'
-export function mountSubmission(byId: ElementLookup, getStructure: () => StrategyStructure, signal: AbortSignal): void {
+import { validateStructure, type StrategyStructure } from '@xivstrat/content-schema'
+export function mountSubmission(byId: ElementLookup, getStructure: () => StrategyStructure, signal: AbortSignal, onSubmitted?: (time: string) => void): void {
   let submissionController: SubmissionController | undefined
   function renderSubmissionState(state: SubmissionUiState): void {
     const button = byId<HTMLButtonElement>('btn-submit-review')
@@ -24,6 +24,7 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
       return
     }
     if (state.status === 'success') {
+      if (state.publishTime) onSubmitted?.(state.publishTime)
       const result = el('div', { class: 'submission-result success' })
       result.append(
         el('strong', {}, `提交成功，已创建 PR #${state.prNumber}`),
@@ -50,7 +51,10 @@ export function mountSubmission(byId: ElementLookup, getStructure: () => Strateg
 
   function submitForReview(): void {
     if (!submissionController) return
-    void submissionController.submit(getStructure())
+    const structure = getStructure()
+    const errors = validateStructure(structure)
+    if (errors.length) { renderSubmissionState({ status: 'error', code: 'INVALID_SUBMISSION', message: '内容未通过校验', details: errors, retrySafe: true }); return }
+    void submissionController.submit(structure)
   }
 
   function initialize(): void {

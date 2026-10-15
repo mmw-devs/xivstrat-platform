@@ -7,7 +7,7 @@ import {
   snapshotBlocks,
   type ModelSuggestion,
 } from './contracts.ts'
-import { normalizeStructure } from '@xivstrat/content-schema'
+import { createEmptyStructure, plainTextDocument, normalizeStructure } from '@xivstrat/content-schema'
 const blocks = [
   { blockId: 'b', path: ['P1'], paragraphs: [{ paragraphId: 'p-0', text: 'H 先分散，H 后集合。😀' }] },
 ]
@@ -60,22 +60,23 @@ test('review-only, malformed output, missing block and over-budget request', () 
 })
 test('snapshot includes recursive body and context; excludes images, macros and metadata', () => {
   const s = normalizeStructure({
-    macros: [{ code: 'secret' }],
+    ...createEmptyStructure(),
+    macros: [{ name: '宏', code: 'secret' }],
     phases: [
       {
         name: '阶段',
         mechanics: [
           {
-            name: '父',
+            name: '父', sections: [],
             sub_mechanics: [
               {
-                name: '子',
+                name: '子', sub_mechanics: [],
                 sections: [
                   {
-                    type: 'note',
+                    type: 'note', title: '',
                     content: [
-                      { type: 'text', value: ['H1 不改'] },
-                      { type: 'image', file: 'private' },
+                      { type: 'text', id: 'body', doc: plainTextDocument(['H1 不改']) },
+                      { type: 'image', file: 'private', caption: '' },
                     ],
                   },
                 ],
